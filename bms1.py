@@ -25,6 +25,7 @@ MAX_ERRORS = 20
 MAX_RETRY_CLOUD = 2
 DUMP_EVERY = 25
 SHARD_ID = 1
+FORCE_REFRESH = True
 
 IST = timezone(timedelta(hours=5, minutes=30))
 DATE_CODE = (datetime.now(IST) + timedelta(days=1)).strftime("%Y%m%d")
@@ -232,7 +233,7 @@ def fetch_venue_safe(v):
     global error_count, processed_since_dump
 
     with lock:
-        if v in fetched_venues or v in failed_venues:
+        if not FORCE_REFRESH and (v in fetched_venues or v in failed_venues):
             return
 
     data = fetch_data(v)
