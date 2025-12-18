@@ -1,4 +1,4 @@
-name: BMS Shards Scraper (Save to Repo)
+name: BMS Shard 2 Scraper (Save to Repo)
 
 on:
   workflow_dispatch:
@@ -7,12 +7,12 @@ on:
     - cron: "30 19 * * *"
 
 permissions:
-  contents: write   # REQUIRED to push commits
+  contents: write   # 🔴 REQUIRED to push commits
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
 
     steps:
       # ---------------- CHECKOUT ----------------
@@ -45,24 +45,12 @@ jobs:
             webdriver-manager \
             cloudscraper
 
-      # ---------------- RUN ALL SHARDS ----------------
-      - name: 🚀 Run BMS shard scripts (1 → 8)
+      # ---------------- RUN SCRAPER ----------------
+      - name: 🚀 Run BMS shard 2 scraper
         env:
           PYTHONUNBUFFERED: "1"
         run: |
-          set -e
-          echo "▶️ Starting BMS shard scrapers"
-
-          python bms1.py
           python bms2.py
-          python bms3.py
-          python bms4.py
-          python bms5.py
-          python bms6.py
-          python bms7.py
-          python bms8.py
-
-          echo "✅ All BMS shard scripts completed"
 
       # ---------------- SAVE TO GITHUB ----------------
       - name: 💾 Commit and push output
@@ -73,9 +61,9 @@ jobs:
           git status
           git add advance/
 
-          git commit -m "Advance BMS data (all shards) ($(date +'%Y-%m-%d'))" || echo "Nothing to commit"
+          git commit -m "Advance BMS shard 2 data ($(date +'%Y-%m-%d'))" || echo "Nothing to commit"
           git push
 
       # ---------------- DONE ----------------
       - name: ✅ Job completed
-        run: echo "All BMS shards completed & data saved"
+        run: echo "Shard 1 completed & data saved to repo"
