@@ -251,11 +251,9 @@ def fetch_venue_safe(code):
 # ---------------- MAIN ----------------
 if __name__ == "__main__":
     with open(f"venues{SHARD_ID}.json") as f:
-        venues = json.load(f)
-
-    with open("venues.json") as f:
         venues_meta = json.load(f)
 
+    venues = venues_meta   # same object, no duplication
     print(f"🚀 Shard {SHARD_ID} start | venues={len(venues)}")
 
     with ThreadPoolExecutor(max_workers=NUM_WORKERS) as exe:
