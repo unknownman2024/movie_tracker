@@ -1,313 +1,1825 @@
-import json
-import os
-import sys
-import threading
-import random
-from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta, timezone
-
-import cloudscraper
-
-# -------- Selenium fallback --------
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-
-# =====================================================
-# CONFIG
-# =====================================================
-NUM_WORKERS = 4
-MAX_ERRORS = 30
-SHARD_ID = 1          # 🔥 CHANGE PER FILE (1..8)
-DUMP_EVERY = 25       # 🔥 memory save interval
-
-IST = timezone(timedelta(hours=5, minutes=30))
-DATE_CODE = (datetime.now(IST) + timedelta(days=1)).strftime("%Y%m%d")
-
-BASE_DIR = os.path.join("advance", "data", DATE_CODE)
-os.makedirs(BASE_DIR, exist_ok=True)
-
-SUMMARY_FILE  = f"{BASE_DIR}/movie_summary{SHARD_ID}.json"
-DETAILED_FILE = f"{BASE_DIR}/detailed{SHARD_ID}.json"
-
-lock = threading.Lock()
-thread_local = threading.local()
-
-error_count = 0
-fetch_count = 0
-all_data = {}
-
-# =====================================================
-# RANDOM HEADERS
-# =====================================================
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/119 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/118 Safari/537.36",
-]
-
-def random_ip():
-    return ".".join(str(random.randint(10, 240)) for _ in range(4))
-
-def headers():
-    ip = random_ip()
-    return {
-        "User-Agent": random.choice(USER_AGENTS),
-        "Accept": "application/json, text/plain, */*",
-        "Origin": "https://in.bookmyshow.com",
-        "Referer": "https://in.bookmyshow.com/",
-        "X-Forwarded-For": ip,
-        "Client-IP": ip,
-    }
-
-# =====================================================
-# CLOUDSCRAPER (THREAD SAFE)
-# =====================================================
-def get_scraper():
-    if hasattr(thread_local, "scraper"):
-        return thread_local.scraper
-    s = cloudscraper.create_scraper(
-        browser={"browser": "chrome", "platform": "windows", "desktop": True}
-    )
-    thread_local.scraper = s
-    return s
-
-def fetch_cloud(url):
-    r = get_scraper().get(url, headers=headers(), timeout=15)
-    if not r.text.strip().startswith("{"):
-        raise ValueError("HTML response")
-    return r.json()
-
-# =====================================================
-# SELENIUM FALLBACK
-# =====================================================
-def get_driver():
-    if hasattr(thread_local, "driver"):
-        return thread_local.driver
-
-    o = Options()
-    o.add_argument("--headless=new")
-    o.add_argument("--no-sandbox")
-    o.add_argument("--disable-dev-shm-usage")
-    o.add_argument(f"--user-agent={random.choice(USER_AGENTS)}")
-
-    d = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()),
-        options=o,
-    )
-    thread_local.driver = d
-    return d
-
-def fetch_selenium(url):
-    d = get_driver()
-    d.set_page_load_timeout(30)
-    d.get(url)
-    body = d.page_source.strip()
-    if not body.startswith("{"):
-        raise ValueError("HTML response")
-    return json.loads(body)
-
-def hybrid_fetch(url):
-    try:
-        return fetch_cloud(url)
-    except Exception:
-        print("⚠ Cloudflare → Selenium fallback")
-        return fetch_selenium(url)
-
-# =====================================================
-# FETCH ONE VENUE
-# =====================================================
-def fetch_venue(venue_code):
-    url = (
-        "https://in.bookmyshow.com/api/v2/mobile/showtimes/byvenue"
-        f"?venueCode={venue_code}&dateCode={DATE_CODE}"
-    )
-
-    data = hybrid_fetch(url)
-    sd = data.get("ShowDetails", [])
-
-    if not sd:
-        print(f"⚠️ [EMPTY] {venue_code} | no ShowDetails")
-        return {}
-
-    api_date = sd[0].get("Date")
-    if api_date and str(api_date) != str(DATE_CODE):
-        print(
-            f"⏩ [SKIPPED] {venue_code} | API_DATE={api_date} | TARGET_DATE={DATE_CODE}"
-        )
-        return {}
-
-    venue_info = sd[0].get("Venues", {})
-    venue_name = venue_info.get("VenueName", "")
-    venue_add  = venue_info.get("VenueAdd", "")
-    chain      = venue_info.get("VenueCompName", "Unknown")
-
-    out = defaultdict(list)
-
-    for ev in sd[0].get("Event", []):
-        title = ev.get("EventTitle", "Unknown")
-
-        for ch in ev.get("ChildEvents", []):
-            dim  = ch.get("EventDimension", "").strip()
-            lang = ch.get("EventLanguage", "").strip()
-            suffix = " | ".join(x for x in (dim, lang) if x)
-            movie = f"{title} [{suffix}]" if suffix else title
-
-            for sh in ch.get("ShowTimes", []):
-                total = sold = avail = gross = 0
-
-                for cat in sh.get("Categories", []):
-                    seats = int(cat.get("MaxSeats", 0))
-                    free  = int(cat.get("SeatsAvail", 0))
-                    price = float(cat.get("CurPrice", 0))
-                    total += seats
-                    avail += free
-                    sold  += seats - free
-                    gross += (seats - free) * price
-
-                out[movie].append({
-                    "venue": venue_name,
-                    "address": venue_add,
-                    "chain": chain,
-                    "time": sh.get("ShowTime"),
-                    "session_id": sh.get("SessionId"),
-                    "audi": sh.get("Attributes", ""),
-                    "total": total,
-                    "available": avail,
-                    "sold": sold,
-                    "gross": round(gross, 2),
-                })
-
-    total_shows = sum(len(v) for v in out.values())
-    print(
-        f"✅ [FETCHED] {venue_code} | API_DATE={api_date} | TARGET_DATE={DATE_CODE} | shows={total_shows}"
-    )
-
-    return out
-
-# =====================================================
-# AGGREGATION
-# =====================================================
-def aggregate(all_data, venues_meta):
-    summary = {}
-    detailed = []
-
-    for vcode, movies in all_data.items():
-        meta = venues_meta.get(vcode, {})
-        city  = meta.get("City", "Unknown")
-        state = meta.get("State", "Unknown")
-
-        for movie, shows in movies.items():
-            m = summary.setdefault(movie, {
-                "shows": 0, "gross": 0, "sold": 0, "totalSeats": 0,
-                "venues": set(), "cities": set(),
-                "fastfilling": 0, "housefull": 0
-            })
-
-            m["venues"].add(vcode)
-            m["cities"].add(city)
-
-            for s in shows:
-                sold = s["sold"]
-                total = s["total"]
-                occ = (sold / total * 100) if total else 0
-
-                m["shows"] += 1
-                m["gross"] += s["gross"]
-                m["sold"]  += sold
-                m["totalSeats"] += total
-
-                if occ >= 98:
-                    m["housefull"] += 1
-                elif occ >= 50:
-                    m["fastfilling"] += 1
-
-                detailed.append({
-                    "movie": movie,
-                    "city": city,
-                    "state": state,
-                    "venue": s["venue"],
-                    "address": s["address"],
-                    "time": s["time"],
-                    "audi": s["audi"],
-                    "session_id": s["session_id"],
-                    "totalSeats": total,
-                    "available": s["available"],
-                    "sold": sold,
-                    "gross": s["gross"],
-                    "occupancy": round(occ, 2),
-                    "source": "BMS",
-                    "date": DATE_CODE
-                })
-
-    final = {
-        k: {
-            "shows": v["shows"],
-            "gross": round(v["gross"], 2),
-            "sold": v["sold"],
-            "totalSeats": v["totalSeats"],
-            "venues": len(v["venues"]),
-            "cities": len(v["cities"]),
-            "fastfilling": v["fastfilling"],
-            "housefull": v["housefull"],
-            "occupancy": round(v["sold"] / v["totalSeats"] * 100, 2) if v["totalSeats"] else 0
+{
+  "ShowDetails": [
+    {
+      "Date": "20251219",
+      "BMSOffers": null,
+      "Event": [
+        {
+          "EventTitle": "Avatar: Fire and Ash",
+          "EventDuration": "",
+          "ChildEvents": [
+            {
+              "Event_strIsDefault": "N",
+              "EventSyn": "",
+              "EventRAT": "0",
+              "EventSEQ": "50",
+              "EventTrailer": "https://www.youtube.com/watch?v=8QVYLudMjJA",
+              "EventName": "Avatar: Fire and Ash (Hindi) - Hindi",
+              "EventGenre": {
+                "Action": [],
+                "Adventure": [],
+                "Fantasy": [],
+                "GenreMeta": [],
+                "Sci-Fi": []
+              },
+              "ApplicableTimeFilters": [
+                "tf1",
+                "tf4"
+              ],
+              "EventCensor": "UA16+",
+              "EventGroup": "EG00406212",
+              "EventCode": "ET00443098",
+              "EventImageCode": "avatar-fire-and-ash-et00443098-1765890785",
+              "EventDimension": "2D",
+              "ShowTimes": [
+                {
+                  "ShowDateTime": "202512191030",
+                  "CategoryRange": "",
+                  "Attributes": "",
+                  "ApplicableTimeFilters": [
+                    "tf1"
+                  ],
+                  "MinPrice": "220.00",
+                  "UpdatedMinPrice": null,
+                  "SessionCopQuota": "0",
+                  "SessionCodFlag": "N",
+                  "CutOffDateTime": "202512191015",
+                  "ChildSeats": "N",
+                  "BestAvailableSeats": 0,
+                  "CutOffFlag": "1",
+                  "SessionCodQuota": "0",
+                  "SessionId": "65394",
+                  "BestBuy": "",
+                  "SessionCopFlag": "N",
+                  "Availability": "A",
+                  "AvailStatus": "",
+                  "ShowTime": "10:30 AM",
+                  "SessionPopUpDesc": "",
+                  "Categories": [
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0003",
+                      "AdditionalData": "",
+                      "CurPrice": "220.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000001",
+                      "AvailStatus": "",
+                      "MaxSeats": "35",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "SILVER",
+                      "SeatsAvail": "35",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0002",
+                      "AdditionalData": "",
+                      "CurPrice": "220.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000002",
+                      "AvailStatus": "",
+                      "MaxSeats": "121",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "GOLD",
+                      "SeatsAvail": "121",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0001",
+                      "AdditionalData": "",
+                      "CurPrice": "220.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000003",
+                      "AvailStatus": "",
+                      "MaxSeats": "70",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "PLATINUM",
+                      "SeatsAvail": "70",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    }
+                  ],
+                  "ShowDateCode": "20251219",
+                  "SessionUnpaidFlag": "N",
+                  "CoupleSeats": "N",
+                  "SessionUnpaidQuota": "0",
+                  "IsAtmosEnabled": "N",
+                  "MaxPrice": "220.00",
+                  "UpdatedMaxPrice": null,
+                  "Offers": null,
+                  "ApplicablePriceFilters": [
+                    "pf3"
+                  ],
+                  "ShowTimeCode": "1030",
+                  "SessionSubTitle": "",
+                  "SessionSubTitleAcronym": "",
+                  "ScreenName": "SCREEN 6"
+                },
+                {
+                  "ShowDateTime": "202512192015",
+                  "CategoryRange": "",
+                  "Attributes": "",
+                  "ApplicableTimeFilters": [
+                    "tf4"
+                  ],
+                  "MinPrice": "230.00",
+                  "UpdatedMinPrice": null,
+                  "SessionCopQuota": "0",
+                  "SessionCodFlag": "N",
+                  "CutOffDateTime": "202512192000",
+                  "ChildSeats": "N",
+                  "BestAvailableSeats": 0,
+                  "CutOffFlag": "1",
+                  "SessionCodQuota": "0",
+                  "SessionId": "65431",
+                  "BestBuy": "",
+                  "SessionCopFlag": "N",
+                  "Availability": "A",
+                  "AvailStatus": "",
+                  "ShowTime": "08:15 PM",
+                  "SessionPopUpDesc": "",
+                  "Categories": [
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0003",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000001",
+                      "AvailStatus": "",
+                      "MaxSeats": "40",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "SILVER",
+                      "SeatsAvail": "40",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "98",
+                      "PriceCode": "0002",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000002",
+                      "AvailStatus": "",
+                      "MaxSeats": "176",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "GOLD",
+                      "SeatsAvail": "173",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "0",
+                      "PriceCode": "0001",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000003",
+                      "AvailStatus": "",
+                      "MaxSeats": "54",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "PLATINUM",
+                      "SeatsAvail": "0",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "0"
+                    }
+                  ],
+                  "ShowDateCode": "20251219",
+                  "SessionUnpaidFlag": "N",
+                  "CoupleSeats": "N",
+                  "SessionUnpaidQuota": "0",
+                  "IsAtmosEnabled": "N",
+                  "MaxPrice": "230.00",
+                  "UpdatedMaxPrice": null,
+                  "Offers": null,
+                  "ApplicablePriceFilters": [
+                    "pf3"
+                  ],
+                  "ShowTimeCode": "2015",
+                  "SessionSubTitle": "",
+                  "SessionSubTitleAcronym": "",
+                  "ScreenName": "SCREEN 1"
+                }
+              ],
+              "IsMovieClubEnabled": "N",
+              "EventIsAtmosEnabled": "N",
+              "Event_strPopUpDesc": "",
+              "EventLanguage": "Hindi",
+              "EventUrl": "avatar-fire-and-ash-hindi",
+              "ApplicablePriceFilters": [
+                "pf3"
+              ]
+            },
+            {
+              "Event_strIsDefault": "N",
+              "EventSyn": "",
+              "EventRAT": "0",
+              "EventSEQ": "50",
+              "EventTrailer": "https://www.youtube.com/watch?v=8L5P5_lOjt8",
+              "EventName": "Avatar: Fire and Ash (3D) - English",
+              "EventGenre": {
+                "Action": [],
+                "Adventure": [],
+                "Fantasy": [],
+                "GenreMeta": [],
+                "Sci-Fi": []
+              },
+              "ApplicableTimeFilters": [
+                "tf2"
+              ],
+              "EventCensor": "UA16+",
+              "EventGroup": "EG00406212",
+              "EventCode": "ET00474771",
+              "EventImageCode": "avatar-fire-and-ash-et00474771-1765890802",
+              "EventDimension": "3D",
+              "ShowTimes": [
+                {
+                  "ShowDateTime": "202512191405",
+                  "CategoryRange": "",
+                  "Attributes": "",
+                  "ApplicableTimeFilters": [
+                    "tf2"
+                  ],
+                  "MinPrice": "280.00",
+                  "UpdatedMinPrice": null,
+                  "SessionCopQuota": "0",
+                  "SessionCodFlag": "N",
+                  "CutOffDateTime": "202512191350",
+                  "ChildSeats": "N",
+                  "BestAvailableSeats": 0,
+                  "CutOffFlag": "1",
+                  "SessionCodQuota": "0",
+                  "SessionId": "65395",
+                  "BestBuy": "",
+                  "SessionCopFlag": "N",
+                  "Availability": "A",
+                  "AvailStatus": "",
+                  "ShowTime": "02:05 PM",
+                  "SessionPopUpDesc": "",
+                  "Categories": [
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0003",
+                      "AdditionalData": "",
+                      "CurPrice": "280.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000001",
+                      "AvailStatus": "",
+                      "MaxSeats": "35",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "SILVER",
+                      "SeatsAvail": "35",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0002",
+                      "AdditionalData": "",
+                      "CurPrice": "280.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000002",
+                      "AvailStatus": "",
+                      "MaxSeats": "121",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "GOLD",
+                      "SeatsAvail": "121",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "95",
+                      "PriceCode": "0001",
+                      "AdditionalData": "",
+                      "CurPrice": "280.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000003",
+                      "AvailStatus": "",
+                      "MaxSeats": "70",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "PLATINUM",
+                      "SeatsAvail": "67",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    }
+                  ],
+                  "ShowDateCode": "20251219",
+                  "SessionUnpaidFlag": "N",
+                  "CoupleSeats": "N",
+                  "SessionUnpaidQuota": "0",
+                  "IsAtmosEnabled": "N",
+                  "MaxPrice": "280.00",
+                  "UpdatedMaxPrice": null,
+                  "Offers": null,
+                  "ApplicablePriceFilters": [
+                    "pf3"
+                  ],
+                  "ShowTimeCode": "1405",
+                  "SessionSubTitle": "",
+                  "SessionSubTitleAcronym": "",
+                  "ScreenName": "SCREEN 6"
+                }
+              ],
+              "IsMovieClubEnabled": "N",
+              "EventIsAtmosEnabled": "N",
+              "Event_strPopUpDesc": "",
+              "EventLanguage": "English",
+              "EventUrl": "avatar-fire-and-ash-3d",
+              "ApplicablePriceFilters": [
+                "pf3"
+              ]
+            },
+            {
+              "Event_strIsDefault": "N",
+              "EventSyn": "",
+              "EventRAT": "0",
+              "EventSEQ": "50",
+              "EventTrailer": "https://www.youtube.com/watch?v=8L5P5_lOjt8",
+              "EventName": "Avatar: Fire and Ash (3D)(Hindi) - Hindi",
+              "EventGenre": {
+                "Action": [],
+                "Adventure": [],
+                "Fantasy": [],
+                "GenreMeta": [],
+                "Sci-Fi": []
+              },
+              "ApplicableTimeFilters": [
+                "tf3",
+                "tf4"
+              ],
+              "EventCensor": "UA16+",
+              "EventGroup": "EG00406212",
+              "EventCode": "ET00474775",
+              "EventImageCode": "avatar-fire-and-ash-et00474775-1765890805",
+              "EventDimension": "3D",
+              "ShowTimes": [
+                {
+                  "ShowDateTime": "202512191740",
+                  "CategoryRange": "",
+                  "Attributes": "",
+                  "ApplicableTimeFilters": [
+                    "tf3"
+                  ],
+                  "MinPrice": "280.00",
+                  "UpdatedMinPrice": null,
+                  "SessionCopQuota": "0",
+                  "SessionCodFlag": "N",
+                  "CutOffDateTime": "202512191725",
+                  "ChildSeats": "N",
+                  "BestAvailableSeats": 0,
+                  "CutOffFlag": "1",
+                  "SessionCodQuota": "0",
+                  "SessionId": "65396",
+                  "BestBuy": "",
+                  "SessionCopFlag": "N",
+                  "Availability": "A",
+                  "AvailStatus": "",
+                  "ShowTime": "05:40 PM",
+                  "SessionPopUpDesc": "",
+                  "Categories": [
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0003",
+                      "AdditionalData": "",
+                      "CurPrice": "280.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000001",
+                      "AvailStatus": "",
+                      "MaxSeats": "35",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "SILVER",
+                      "SeatsAvail": "35",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "91",
+                      "PriceCode": "0002",
+                      "AdditionalData": "",
+                      "CurPrice": "280.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000002",
+                      "AvailStatus": "",
+                      "MaxSeats": "121",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "GOLD",
+                      "SeatsAvail": "111",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "75",
+                      "PriceCode": "0001",
+                      "AdditionalData": "",
+                      "CurPrice": "280.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000003",
+                      "AvailStatus": "",
+                      "MaxSeats": "70",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "PLATINUM",
+                      "SeatsAvail": "53",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    }
+                  ],
+                  "ShowDateCode": "20251219",
+                  "SessionUnpaidFlag": "N",
+                  "CoupleSeats": "N",
+                  "SessionUnpaidQuota": "0",
+                  "IsAtmosEnabled": "N",
+                  "MaxPrice": "280.00",
+                  "UpdatedMaxPrice": null,
+                  "Offers": null,
+                  "ApplicablePriceFilters": [
+                    "pf3"
+                  ],
+                  "ShowTimeCode": "1740",
+                  "SessionSubTitle": "",
+                  "SessionSubTitleAcronym": "",
+                  "ScreenName": "SCREEN 6"
+                },
+                {
+                  "ShowDateTime": "202512192115",
+                  "CategoryRange": "",
+                  "Attributes": "",
+                  "ApplicableTimeFilters": [
+                    "tf4"
+                  ],
+                  "MinPrice": "280.00",
+                  "UpdatedMinPrice": null,
+                  "SessionCopQuota": "0",
+                  "SessionCodFlag": "N",
+                  "CutOffDateTime": "202512192100",
+                  "ChildSeats": "N",
+                  "BestAvailableSeats": 0,
+                  "CutOffFlag": "1",
+                  "SessionCodQuota": "0",
+                  "SessionId": "65397",
+                  "BestBuy": "",
+                  "SessionCopFlag": "N",
+                  "Availability": "A",
+                  "AvailStatus": "",
+                  "ShowTime": "09:15 PM",
+                  "SessionPopUpDesc": "",
+                  "Categories": [
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0003",
+                      "AdditionalData": "",
+                      "CurPrice": "280.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000001",
+                      "AvailStatus": "",
+                      "MaxSeats": "35",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "SILVER",
+                      "SeatsAvail": "35",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0002",
+                      "AdditionalData": "",
+                      "CurPrice": "280.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000002",
+                      "AvailStatus": "",
+                      "MaxSeats": "121",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "GOLD",
+                      "SeatsAvail": "121",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0001",
+                      "AdditionalData": "",
+                      "CurPrice": "280.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000003",
+                      "AvailStatus": "",
+                      "MaxSeats": "70",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "PLATINUM",
+                      "SeatsAvail": "70",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    }
+                  ],
+                  "ShowDateCode": "20251219",
+                  "SessionUnpaidFlag": "N",
+                  "CoupleSeats": "N",
+                  "SessionUnpaidQuota": "0",
+                  "IsAtmosEnabled": "N",
+                  "MaxPrice": "280.00",
+                  "UpdatedMaxPrice": null,
+                  "Offers": null,
+                  "ApplicablePriceFilters": [
+                    "pf3"
+                  ],
+                  "ShowTimeCode": "2115",
+                  "SessionSubTitle": "",
+                  "SessionSubTitleAcronym": "",
+                  "ScreenName": "SCREEN 6"
+                }
+              ],
+              "IsMovieClubEnabled": "N",
+              "EventIsAtmosEnabled": "N",
+              "Event_strPopUpDesc": "",
+              "EventLanguage": "Hindi",
+              "EventUrl": "avatar-fire-and-ash-3dhindi",
+              "ApplicablePriceFilters": [
+                "pf3"
+              ]
+            }
+          ],
+          "EventSynopsis": "",
+          "EventGenre": "",
+          "ApplicablePriceFilters": [
+            "pf3"
+          ],
+          "ApplicableTimeFilters": [
+            "tf1",
+            "tf4",
+            "tf2",
+            "tf3"
+          ],
+          "EventCensor": "",
+          "EventGroup": "EG00406212"
+        },
+        {
+          "EventTitle": "Dhurandhar",
+          "EventDuration": "",
+          "ChildEvents": [
+            {
+              "Event_strIsDefault": "Y",
+              "EventSyn": "",
+              "EventRAT": "0",
+              "EventSEQ": "50",
+              "EventTrailer": "https://www.youtube.com/watch?v=rZ_e-s6VvR4",
+              "EventName": "Dhurandhar - Hindi",
+              "EventGenre": {
+                "Action": [],
+                "GenreMeta": [],
+                "Thriller": []
+              },
+              "ApplicableTimeFilters": [
+                "tf1",
+                "tf2",
+                "tf3",
+                "tf4"
+              ],
+              "EventCensor": "A",
+              "EventGroup": "EG00450189",
+              "EventCode": "ET00452447",
+              "EventImageCode": "dhurandhar-et00452447-1764571309",
+              "EventDimension": "2D",
+              "ShowTimes": [
+                {
+                  "ShowDateTime": "202512191130",
+                  "CategoryRange": "",
+                  "Attributes": "",
+                  "ApplicableTimeFilters": [
+                    "tf1"
+                  ],
+                  "MinPrice": "200.00",
+                  "UpdatedMinPrice": null,
+                  "SessionCopQuota": "0",
+                  "SessionCodFlag": "N",
+                  "CutOffDateTime": "202512191115",
+                  "ChildSeats": "N",
+                  "BestAvailableSeats": 0,
+                  "CutOffFlag": "1",
+                  "SessionCodQuota": "0",
+                  "SessionId": "65424",
+                  "BestBuy": "",
+                  "SessionCopFlag": "N",
+                  "Availability": "A",
+                  "AvailStatus": "",
+                  "ShowTime": "11:30 AM",
+                  "SessionPopUpDesc": "",
+                  "Categories": [
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0003",
+                      "AdditionalData": "",
+                      "CurPrice": "200.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000001",
+                      "AvailStatus": "",
+                      "MaxSeats": "28",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "SILVER",
+                      "SeatsAvail": "28",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0002",
+                      "AdditionalData": "",
+                      "CurPrice": "200.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000002",
+                      "AvailStatus": "",
+                      "MaxSeats": "84",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "GOLD",
+                      "SeatsAvail": "84",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "97",
+                      "PriceCode": "0001",
+                      "AdditionalData": "",
+                      "CurPrice": "200.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000003",
+                      "AvailStatus": "",
+                      "MaxSeats": "41",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "PLATINUM",
+                      "SeatsAvail": "40",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    }
+                  ],
+                  "ShowDateCode": "20251219",
+                  "SessionUnpaidFlag": "N",
+                  "CoupleSeats": "N",
+                  "SessionUnpaidQuota": "0",
+                  "IsAtmosEnabled": "N",
+                  "MaxPrice": "200.00",
+                  "UpdatedMaxPrice": null,
+                  "Offers": null,
+                  "ApplicablePriceFilters": [
+                    "pf2"
+                  ],
+                  "ShowTimeCode": "1130",
+                  "SessionSubTitle": "",
+                  "SessionSubTitleAcronym": "",
+                  "ScreenName": "SCREEN 2"
+                },
+                {
+                  "ShowDateTime": "202512191245",
+                  "CategoryRange": "",
+                  "Attributes": "",
+                  "ApplicableTimeFilters": [
+                    "tf2"
+                  ],
+                  "MinPrice": "230.00",
+                  "UpdatedMinPrice": null,
+                  "SessionCopQuota": "0",
+                  "SessionCodFlag": "N",
+                  "CutOffDateTime": "202512191230",
+                  "ChildSeats": "N",
+                  "BestAvailableSeats": 0,
+                  "CutOffFlag": "1",
+                  "SessionCodQuota": "0",
+                  "SessionId": "65422",
+                  "BestBuy": "",
+                  "SessionCopFlag": "N",
+                  "Availability": "A",
+                  "AvailStatus": "",
+                  "ShowTime": "12:45 PM",
+                  "SessionPopUpDesc": "",
+                  "Categories": [
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0003",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000001",
+                      "AvailStatus": "",
+                      "MaxSeats": "40",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "SILVER",
+                      "SeatsAvail": "40",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0002",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000002",
+                      "AvailStatus": "",
+                      "MaxSeats": "176",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "GOLD",
+                      "SeatsAvail": "176",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "0",
+                      "PriceCode": "0001",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000003",
+                      "AvailStatus": "",
+                      "MaxSeats": "54",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "PLATINUM",
+                      "SeatsAvail": "0",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "0"
+                    }
+                  ],
+                  "ShowDateCode": "20251219",
+                  "SessionUnpaidFlag": "N",
+                  "CoupleSeats": "N",
+                  "SessionUnpaidQuota": "0",
+                  "IsAtmosEnabled": "N",
+                  "MaxPrice": "230.00",
+                  "UpdatedMaxPrice": null,
+                  "Offers": null,
+                  "ApplicablePriceFilters": [
+                    "pf3"
+                  ],
+                  "ShowTimeCode": "1245",
+                  "SessionSubTitle": "",
+                  "SessionSubTitleAcronym": "",
+                  "ScreenName": "SCREEN 1"
+                },
+                {
+                  "ShowDateTime": "202512191345",
+                  "CategoryRange": "",
+                  "Attributes": "",
+                  "ApplicableTimeFilters": [
+                    "tf2"
+                  ],
+                  "MinPrice": "230.00",
+                  "UpdatedMinPrice": null,
+                  "SessionCopQuota": "0",
+                  "SessionCodFlag": "N",
+                  "CutOffDateTime": "202512191330",
+                  "ChildSeats": "N",
+                  "BestAvailableSeats": 0,
+                  "CutOffFlag": "1",
+                  "SessionCodQuota": "0",
+                  "SessionId": "65428",
+                  "BestBuy": "",
+                  "SessionCopFlag": "N",
+                  "Availability": "A",
+                  "AvailStatus": "",
+                  "ShowTime": "01:45 PM",
+                  "SessionPopUpDesc": "",
+                  "Categories": [
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0003",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000001",
+                      "AvailStatus": "",
+                      "MaxSeats": "28",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "SILVER",
+                      "SeatsAvail": "28",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0002",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000002",
+                      "AvailStatus": "",
+                      "MaxSeats": "84",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "GOLD",
+                      "SeatsAvail": "84",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "97",
+                      "PriceCode": "0001",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000003",
+                      "AvailStatus": "",
+                      "MaxSeats": "40",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "PLATINUM",
+                      "SeatsAvail": "39",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    }
+                  ],
+                  "ShowDateCode": "20251219",
+                  "SessionUnpaidFlag": "N",
+                  "CoupleSeats": "N",
+                  "SessionUnpaidQuota": "0",
+                  "IsAtmosEnabled": "N",
+                  "MaxPrice": "230.00",
+                  "UpdatedMaxPrice": null,
+                  "Offers": null,
+                  "ApplicablePriceFilters": [
+                    "pf3"
+                  ],
+                  "ShowTimeCode": "1345",
+                  "SessionSubTitle": "",
+                  "SessionSubTitleAcronym": "",
+                  "ScreenName": "SCREEN 4"
+                },
+                {
+                  "ShowDateTime": "202512191515",
+                  "CategoryRange": "",
+                  "Attributes": "",
+                  "ApplicableTimeFilters": [
+                    "tf2"
+                  ],
+                  "MinPrice": "230.00",
+                  "UpdatedMinPrice": null,
+                  "SessionCopQuota": "0",
+                  "SessionCodFlag": "N",
+                  "CutOffDateTime": "202512191500",
+                  "ChildSeats": "N",
+                  "BestAvailableSeats": 0,
+                  "CutOffFlag": "1",
+                  "SessionCodQuota": "0",
+                  "SessionId": "65425",
+                  "BestBuy": "",
+                  "SessionCopFlag": "N",
+                  "Availability": "A",
+                  "AvailStatus": "",
+                  "ShowTime": "03:15 PM",
+                  "SessionPopUpDesc": "",
+                  "Categories": [
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0003",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000001",
+                      "AvailStatus": "",
+                      "MaxSeats": "28",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "SILVER",
+                      "SeatsAvail": "28",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "95",
+                      "PriceCode": "0002",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000002",
+                      "AvailStatus": "",
+                      "MaxSeats": "84",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "GOLD",
+                      "SeatsAvail": "80",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "92",
+                      "PriceCode": "0001",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000003",
+                      "AvailStatus": "",
+                      "MaxSeats": "41",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "PLATINUM",
+                      "SeatsAvail": "38",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    }
+                  ],
+                  "ShowDateCode": "20251219",
+                  "SessionUnpaidFlag": "N",
+                  "CoupleSeats": "N",
+                  "SessionUnpaidQuota": "0",
+                  "IsAtmosEnabled": "N",
+                  "MaxPrice": "230.00",
+                  "UpdatedMaxPrice": null,
+                  "Offers": null,
+                  "ApplicablePriceFilters": [
+                    "pf3"
+                  ],
+                  "ShowTimeCode": "1515",
+                  "SessionSubTitle": "",
+                  "SessionSubTitleAcronym": "",
+                  "ScreenName": "SCREEN 2"
+                },
+                {
+                  "ShowDateTime": "202512191630",
+                  "CategoryRange": "",
+                  "Attributes": "",
+                  "ApplicableTimeFilters": [
+                    "tf3"
+                  ],
+                  "MinPrice": "230.00",
+                  "UpdatedMinPrice": null,
+                  "SessionCopQuota": "0",
+                  "SessionCodFlag": "N",
+                  "CutOffDateTime": "202512191615",
+                  "ChildSeats": "N",
+                  "BestAvailableSeats": 0,
+                  "CutOffFlag": "1",
+                  "SessionCodQuota": "0",
+                  "SessionId": "65423",
+                  "BestBuy": "",
+                  "SessionCopFlag": "N",
+                  "Availability": "A",
+                  "AvailStatus": "",
+                  "ShowTime": "04:30 PM",
+                  "SessionPopUpDesc": "",
+                  "Categories": [
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0003",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000001",
+                      "AvailStatus": "",
+                      "MaxSeats": "40",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "SILVER",
+                      "SeatsAvail": "40",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0002",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000002",
+                      "AvailStatus": "",
+                      "MaxSeats": "176",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "GOLD",
+                      "SeatsAvail": "176",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "0",
+                      "PriceCode": "0001",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000003",
+                      "AvailStatus": "",
+                      "MaxSeats": "54",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "PLATINUM",
+                      "SeatsAvail": "0",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "0"
+                    }
+                  ],
+                  "ShowDateCode": "20251219",
+                  "SessionUnpaidFlag": "N",
+                  "CoupleSeats": "N",
+                  "SessionUnpaidQuota": "0",
+                  "IsAtmosEnabled": "N",
+                  "MaxPrice": "230.00",
+                  "UpdatedMaxPrice": null,
+                  "Offers": null,
+                  "ApplicablePriceFilters": [
+                    "pf3"
+                  ],
+                  "ShowTimeCode": "1630",
+                  "SessionSubTitle": "",
+                  "SessionSubTitleAcronym": "",
+                  "ScreenName": "SCREEN 1"
+                },
+                {
+                  "ShowDateTime": "202512191730",
+                  "CategoryRange": "",
+                  "Attributes": "",
+                  "ApplicableTimeFilters": [
+                    "tf3"
+                  ],
+                  "MinPrice": "230.00",
+                  "UpdatedMinPrice": null,
+                  "SessionCopQuota": "0",
+                  "SessionCodFlag": "N",
+                  "CutOffDateTime": "202512191715",
+                  "ChildSeats": "N",
+                  "BestAvailableSeats": 0,
+                  "CutOffFlag": "1",
+                  "SessionCodQuota": "0",
+                  "SessionId": "65429",
+                  "BestBuy": "",
+                  "SessionCopFlag": "N",
+                  "Availability": "A",
+                  "AvailStatus": "",
+                  "ShowTime": "05:30 PM",
+                  "SessionPopUpDesc": "",
+                  "Categories": [
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0003",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000001",
+                      "AvailStatus": "",
+                      "MaxSeats": "28",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "SILVER",
+                      "SeatsAvail": "28",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0002",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000002",
+                      "AvailStatus": "",
+                      "MaxSeats": "84",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "GOLD",
+                      "SeatsAvail": "84",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "62",
+                      "PriceCode": "0001",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000003",
+                      "AvailStatus": "",
+                      "MaxSeats": "40",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "PLATINUM",
+                      "SeatsAvail": "25",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    }
+                  ],
+                  "ShowDateCode": "20251219",
+                  "SessionUnpaidFlag": "N",
+                  "CoupleSeats": "N",
+                  "SessionUnpaidQuota": "0",
+                  "IsAtmosEnabled": "N",
+                  "MaxPrice": "230.00",
+                  "UpdatedMaxPrice": null,
+                  "Offers": null,
+                  "ApplicablePriceFilters": [
+                    "pf3"
+                  ],
+                  "ShowTimeCode": "1730",
+                  "SessionSubTitle": "",
+                  "SessionSubTitleAcronym": "",
+                  "ScreenName": "SCREEN 4"
+                },
+                {
+                  "ShowDateTime": "202512191900",
+                  "CategoryRange": "",
+                  "Attributes": "",
+                  "ApplicableTimeFilters": [
+                    "tf4"
+                  ],
+                  "MinPrice": "230.00",
+                  "UpdatedMinPrice": null,
+                  "SessionCopQuota": "0",
+                  "SessionCodFlag": "N",
+                  "CutOffDateTime": "202512191845",
+                  "ChildSeats": "N",
+                  "BestAvailableSeats": 0,
+                  "CutOffFlag": "1",
+                  "SessionCodQuota": "0",
+                  "SessionId": "65426",
+                  "BestBuy": "",
+                  "SessionCopFlag": "N",
+                  "Availability": "A",
+                  "AvailStatus": "",
+                  "ShowTime": "07:00 PM",
+                  "SessionPopUpDesc": "",
+                  "Categories": [
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0003",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000001",
+                      "AvailStatus": "",
+                      "MaxSeats": "28",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "SILVER",
+                      "SeatsAvail": "28",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0002",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000002",
+                      "AvailStatus": "",
+                      "MaxSeats": "84",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "GOLD",
+                      "SeatsAvail": "84",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "80",
+                      "PriceCode": "0001",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000003",
+                      "AvailStatus": "",
+                      "MaxSeats": "41",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "PLATINUM",
+                      "SeatsAvail": "33",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    }
+                  ],
+                  "ShowDateCode": "20251219",
+                  "SessionUnpaidFlag": "N",
+                  "CoupleSeats": "N",
+                  "SessionUnpaidQuota": "0",
+                  "IsAtmosEnabled": "N",
+                  "MaxPrice": "230.00",
+                  "UpdatedMaxPrice": null,
+                  "Offers": null,
+                  "ApplicablePriceFilters": [
+                    "pf3"
+                  ],
+                  "ShowTimeCode": "1900",
+                  "SessionSubTitle": "",
+                  "SessionSubTitleAcronym": "",
+                  "ScreenName": "SCREEN 2"
+                },
+                {
+                  "ShowDateTime": "202512192130",
+                  "CategoryRange": "",
+                  "Attributes": "",
+                  "ApplicableTimeFilters": [
+                    "tf4"
+                  ],
+                  "MinPrice": "230.00",
+                  "UpdatedMinPrice": null,
+                  "SessionCopQuota": "0",
+                  "SessionCodFlag": "N",
+                  "CutOffDateTime": "202512192115",
+                  "ChildSeats": "N",
+                  "BestAvailableSeats": 0,
+                  "CutOffFlag": "1",
+                  "SessionCodQuota": "0",
+                  "SessionId": "65430",
+                  "BestBuy": "",
+                  "SessionCopFlag": "N",
+                  "Availability": "A",
+                  "AvailStatus": "",
+                  "ShowTime": "09:30 PM",
+                  "SessionPopUpDesc": "",
+                  "Categories": [
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0003",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000001",
+                      "AvailStatus": "",
+                      "MaxSeats": "28",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "SILVER",
+                      "SeatsAvail": "28",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "97",
+                      "PriceCode": "0002",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000002",
+                      "AvailStatus": "",
+                      "MaxSeats": "84",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "GOLD",
+                      "SeatsAvail": "82",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "85",
+                      "PriceCode": "0001",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000003",
+                      "AvailStatus": "",
+                      "MaxSeats": "40",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "PLATINUM",
+                      "SeatsAvail": "34",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    }
+                  ],
+                  "ShowDateCode": "20251219",
+                  "SessionUnpaidFlag": "N",
+                  "CoupleSeats": "N",
+                  "SessionUnpaidQuota": "0",
+                  "IsAtmosEnabled": "N",
+                  "MaxPrice": "230.00",
+                  "UpdatedMaxPrice": null,
+                  "Offers": null,
+                  "ApplicablePriceFilters": [
+                    "pf3"
+                  ],
+                  "ShowTimeCode": "2130",
+                  "SessionSubTitle": "",
+                  "SessionSubTitleAcronym": "",
+                  "ScreenName": "SCREEN 4"
+                },
+                {
+                  "ShowDateTime": "202512192245",
+                  "CategoryRange": "",
+                  "Attributes": "",
+                  "ApplicableTimeFilters": [
+                    "tf4"
+                  ],
+                  "MinPrice": "230.00",
+                  "UpdatedMinPrice": null,
+                  "SessionCopQuota": "0",
+                  "SessionCodFlag": "N",
+                  "CutOffDateTime": "202512192230",
+                  "ChildSeats": "N",
+                  "BestAvailableSeats": 0,
+                  "CutOffFlag": "1",
+                  "SessionCodQuota": "0",
+                  "SessionId": "65452",
+                  "BestBuy": "",
+                  "SessionCopFlag": "N",
+                  "Availability": "A",
+                  "AvailStatus": "",
+                  "ShowTime": "10:45 PM",
+                  "SessionPopUpDesc": "",
+                  "Categories": [
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0003",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000001",
+                      "AvailStatus": "",
+                      "MaxSeats": "28",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "SILVER",
+                      "SeatsAvail": "28",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "100",
+                      "PriceCode": "0002",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000002",
+                      "AvailStatus": "",
+                      "MaxSeats": "84",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "GOLD",
+                      "SeatsAvail": "84",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    },
+                    {
+                      "PercentAvail": "93",
+                      "PriceCode": "0001",
+                      "AdditionalData": "",
+                      "CurPrice": "230.00",
+                      "UpdatedPrice": null,
+                      "AreaCatCode": "0000000003",
+                      "AvailStatus": "",
+                      "MaxSeats": "41",
+                      "BestAvailableSeats": "0",
+                      "SeatLayout": "Y",
+                      "PriceDesc": "PLATINUM",
+                      "SeatsAvail": "38",
+                      "CategoryRange": "",
+                      "intCategoryMaxTickets": "10"
+                    }
+                  ],
+                  "ShowDateCode": "20251219",
+                  "SessionUnpaidFlag": "N",
+                  "CoupleSeats": "N",
+                  "SessionUnpaidQuota": "0",
+                  "IsAtmosEnabled": "N",
+                  "MaxPrice": "230.00",
+                  "UpdatedMaxPrice": null,
+                  "Offers": null,
+                  "ApplicablePriceFilters": [
+                    "pf3"
+                  ],
+                  "ShowTimeCode": "2245",
+                  "SessionSubTitle": "",
+                  "SessionSubTitleAcronym": "",
+                  "ScreenName": "SCREEN 2"
+                }
+              ],
+              "IsMovieClubEnabled": "N",
+              "EventIsAtmosEnabled": "N",
+              "Event_strPopUpDesc": "",
+              "EventLanguage": "Hindi",
+              "EventUrl": "dhurandhar",
+              "ApplicablePriceFilters": [
+                "pf2",
+                "pf3"
+              ]
+            }
+          ],
+          "EventSynopsis": "",
+          "EventGenre": "",
+          "ApplicablePriceFilters": [
+            "pf2",
+            "pf3"
+          ],
+          "ApplicableTimeFilters": [
+            "tf1",
+            "tf2",
+            "tf3",
+            "tf4"
+          ],
+          "EventCensor": "",
+          "EventGroup": "EG00450189",
+          "showContentWarning": true
         }
-        for k, v in summary.items()
+      ],
+      "Venues": {
+        "CouponIsAllowed": "Y",
+        "Message": "Cinema reserves the right to cancel or modify showtimes without prior notice due to low occupancy, technical issues, or other operational reasons.<br>Dear Guest.<br>\nIf you are going to select M-Ticket option please make sure to follow the below guidelines.<br>1. Download the M-Ticket QR Code (link sent via confirmation SMS) on your mobile device to enter the cinema.<br>2. No Print Out Needed.<br>3. Entry will NOT be provided without showing QR code.<br>4. Please split M-ticket in advance before entering the cinema for more than one group.<br>5. Ticket required for child 3 years and above.<br>6. Outside food and beverages are not allowed inside the cinema premises.<br>7. Kindly carry age proof for movies certified `A`<br>8. Children below the age of 18 years cannot be admitted for movies certified `A`.<br>9. Recording of a film through mobile or camera is strictly prohibited and is a punishable offence.<br>10. Pre-booked food & beverage needs to be collected from F&B counter.",
+        "ShowSeatNo": "Y",
+        "VenueCode": "BARA",
+        "TicketCancellation": "Y",
+        "VenueInfoMessage": "Cancellation Available",
+        "SocialDistancingCompliant": "N",
+        "UnpaidReleaseCutOff": "1 hr ",
+        "VenueLegends": ";WC;REC;CAR;FOD;",
+        "UnpaidReleaseCutOffJson": [],
+        "CinemaCodFlag": "N",
+        "CinemaIsOnlineNoTransactionMsg": "",
+        "IsFullLayout": "Y",
+        "VenueAdd": "4TH Floor, Axis Mall, 1C, 11, CF Block(Newtown), Action Area 1C, CF-9 New Town, Rajarhat, Near Novotel Kolkata Hotel And Residences, Kolkata, West Bengal 700156, India",
+        "VenueApp": "VS",
+        "MessageType": "AC",
+        "VenueLat": "22.5794",
+        "CodReleaseCutOff": "10 hrs ",
+        "IsFoodSales": "Y",
+        "VenueName": "Bioscope: Axis Mall, Rajarhat",
+        "VenueCompName": "Priya Entertainments Pvt. Ltd.",
+        "VenueComp": "PEPL",
+        "ETicket": "Y",
+        "CinemaUnpaidFlag": "N",
+        "CinemaCopFlag": "N",
+        "BestSeatsAvail": "N",
+        "VenueLong": "88.4595",
+        "CopReleaseCutOff": "3 hrs ",
+        "MessageTitle": "Terms & Conditions",
+        "MTicket": "Y",
+        "CoupleSeats": "N",
+        "UnpaidMaxQuantity": "4",
+        "IsFullSeatLayout": "Y",
+        "IsNewCinema": "N",
+        "IsMultiplex": "Y",
+        "isVenueDown": false,
+        "PopUpDescription": "",
+        "faqContent": {
+          "heading": "",
+          "content": null
+        },
+        "SeatSelector": null,
+        "eticket": "",
+        "mticket": "",
+        "seatLegends": [
+          {
+            "status": "1",
+            "label": "Available",
+            "infoText": "",
+            "selectionText": ""
+          },
+          {
+            "status": "88",
+            "label": "Selected",
+            "infoText": "",
+            "selectionText": ""
+          },
+          {
+            "status": "2",
+            "label": "Sold",
+            "infoText": "",
+            "selectionText": ""
+          }
+        ],
+        "showTncOnSeatLayout": true,
+        "cta": {
+          "additionalData": {
+            "bottomSheetData": {
+              "styles": {
+                "headers-style": {
+                  "fontColor": "#333333",
+                  "font": "large-medium"
+                },
+                "body-style": {
+                  "fontColor": "#666666",
+                  "font": "small-regular"
+                }
+              },
+              "ctaData": [
+                {
+                  "text": "Continue",
+                  "style": "primary",
+                  "cta": {
+                    "id": "launchSeatLayout",
+                    "type": "router"
+                  }
+                }
+              ],
+              "widgets": [
+                {
+                  "type": "text",
+                  "data": [
+                    {
+                      "text": "Content Warning",
+                      "styleId": "headers-style"
+                    },
+                    {
+                      "text": "This movie is rated “A” and is only for viewers above 18. Please carry a valid ID/Age Proof to the theatre. If you are denied entry due to age or ID issues, you will not get a refund.",
+                      "styleId": "body-style"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "type": "bottomsheet"
+        }
+      },
+      "TimeFilters": [
+        {
+          "StartTime": "00:00",
+          "StartTimeText": "12:00 AM",
+          "EndTime": "11:59",
+          "EndTimeText": "11:59 AM",
+          "Key": "tf1",
+          "Title": "Morning",
+          "PriceFilters": [
+            "pf2",
+            "pf3"
+          ],
+          "isDisabled": false,
+          "isPermanentlyDisabled": false
+        },
+        {
+          "StartTime": "12:00",
+          "StartTimeText": "12:00 PM",
+          "EndTime": "15:59",
+          "EndTimeText": "3:59 PM",
+          "Key": "tf2",
+          "Title": "Afternoon",
+          "PriceFilters": [
+            "pf3"
+          ],
+          "isDisabled": false,
+          "isPermanentlyDisabled": false
+        },
+        {
+          "StartTime": "16:00",
+          "StartTimeText": "4:00 PM",
+          "EndTime": "18:59",
+          "EndTimeText": "6:59 PM",
+          "Key": "tf3",
+          "Title": "Evening",
+          "PriceFilters": [
+            "pf3"
+          ],
+          "isDisabled": false,
+          "isPermanentlyDisabled": false
+        },
+        {
+          "StartTime": "19:00",
+          "StartTimeText": "7:00 PM",
+          "EndTime": "23:59",
+          "EndTimeText": "11:59 PM",
+          "Key": "tf4",
+          "Title": "Night",
+          "PriceFilters": [
+            "pf3"
+          ],
+          "isDisabled": false,
+          "isPermanentlyDisabled": false
+        }
+      ],
+      "PriceFilters": [
+        {
+          "Min": "0",
+          "Max": "200",
+          "Key": "pf2",
+          "TimeFilters": [
+            "tf1"
+          ],
+          "isDisabled": false
+        },
+        {
+          "Min": "201",
+          "Max": "300",
+          "Key": "pf3",
+          "TimeFilters": [
+            "tf1",
+            "tf2",
+            "tf3",
+            "tf4"
+          ],
+          "isDisabled": false
+        }
+      ]
     }
-
-    return final, detailed
-
-# =====================================================
-# MEMORY DUMP
-# =====================================================
-def dump_memory(venues_meta):
-    summary, detailed = aggregate(all_data, venues_meta)
-    with open(SUMMARY_FILE, "w") as f:
-        json.dump(summary, f, indent=2)
-    with open(DETAILED_FILE, "w") as f:
-        json.dump(detailed, f, indent=2)
-    print(f"💾 Memory dump done at {fetch_count} venues")
-
-# =====================================================
-# THREAD SAFE FETCH
-# =====================================================
-def fetch_safe(vcode, venues_meta):
-    global error_count, fetch_count
-    try:
-        data = fetch_venue(vcode)
-        with lock:
-            all_data[vcode] = data
-            fetch_count += 1
-
-            if fetch_count % DUMP_EVERY == 0:
-                dump_memory(venues_meta)
-
-    except Exception as e:
-        with lock:
-            error_count += 1
-            print(f"❌ {vcode} failed: {e}")
-            if error_count >= MAX_ERRORS:
-                dump_memory(venues_meta)
-                sys.exit(1)
-
-# =====================================================
-# MAIN
-# =====================================================
-if __name__ == "__main__":
-    with open(f"venues{SHARD_ID}.json") as f:
-        venues = json.load(f)
-
-    print(f"🚀 Shard {SHARD_ID} started | workers={NUM_WORKERS}")
-
-    with ThreadPoolExecutor(NUM_WORKERS) as exe:
-        futures = [
-            exe.submit(fetch_safe, v, venues)
-            for v in venues.keys()
+  ],
+  "ShowDatesArray": [
+    {
+      "DispDate": "Tomorrow, 19 Dec",
+      "DateCode": "20251219",
+      "Day": "Friday",
+      "Month": "December",
+      "Date": "19",
+      "Year": "2025",
+      "isDisabled": false
+    },
+    {
+      "DispDate": "Saturday, 20 Dec",
+      "DateCode": "20251220",
+      "Day": "Saturday",
+      "Month": "December",
+      "Date": "20",
+      "Year": "2025",
+      "isDisabled": false
+    },
+    {
+      "DispDate": "Sunday, 21 Dec",
+      "DateCode": "20251221",
+      "Day": "Sunday",
+      "Month": "December",
+      "Date": "21",
+      "Year": "2025",
+      "isDisabled": false
+    },
+    {
+      "DispDate": "Monday, 22 Dec",
+      "DateCode": "20251222",
+      "Day": "Monday",
+      "Month": "December",
+      "Date": "22",
+      "Year": "2025",
+      "isDisabled": true
+    },
+    {
+      "DispDate": "Tuesday, 23 Dec",
+      "DateCode": "20251223",
+      "Day": "Tuesday",
+      "Month": "December",
+      "Date": "23",
+      "Year": "2025",
+      "isDisabled": true
+    },
+    {
+      "DispDate": "Wednesday, 24 Dec",
+      "DateCode": "20251224",
+      "Day": "Wednesday",
+      "Month": "December",
+      "Date": "24",
+      "Year": "2025",
+      "isDisabled": true
+    },
+    {
+      "DispDate": "Thursday, 25 Dec",
+      "DateCode": "20251225",
+      "Day": "Thursday",
+      "Month": "December",
+      "Date": "25",
+      "Year": "2025",
+      "isDisabled": true
+    }
+  ],
+  "AllShowDatesDisabled": false,
+  "DownCinemasMessage": "Bookings for this cinema are not going through due to a connectivity issue with cinema. Please try again later or explore other cinemas.",
+  "BottomMessageWidget": {
+    "redirectionCTA": {}
+  },
+  "SeatLayoutMessageWidget": {
+    "label": "",
+    "imageURL": "",
+    "isDismissable": false
+  },
+  "DownCinemasTitle": "Sorry!",
+  "seatSelectorFooterText": {
+    "components": [
+      {
+        "type": "text",
+        "text": "Book the ",
+        "style": {
+          "font": "extra-tiny-regular"
+        }
+      },
+      {
+        "type": "image",
+        "imageUrl": "https://assets-in.bmscdn.com/moviesmaster/movies-showtimes/v4/best-seats/seat-layout-bestseat.png",
+        "style": {
+          "font": "extra-tiny-regular",
+          "imageVerticalAlignment": "bottom"
+        }
+      },
+      {
+        "type": "text",
+        "text": " Bestseller Seats ",
+        "style": {
+          "font": "extra-tiny-medium"
+        }
+      },
+      {
+        "type": "text",
+        "text": "in this cinema at no extra cost!",
+        "style": {
+          "font": "extra-tiny-regular"
+        }
+      }
+    ]
+  },
+  "bestSeatsDialogBox": {
+    "widgets": [
+      {
+        "type": "text",
+        "data": [
+          {
+            "text": "Bestseller seats",
+            "style": {
+              "font": "subtitle-large-bold",
+              "horizontalAlignment": "center"
+            }
+          }
         ]
-        for _ in as_completed(futures):
-            pass
-
-    dump_memory(venues)
-    print(f"✅ DONE — shard {SHARD_ID} complete")
+      },
+      {
+        "type": "image",
+        "data": [
+          {
+            "imageUrl": "https://assets-in.bmscdn.com/moviesmaster/movies-showtimes/v4/best-seats/seat-layout-dialog.png"
+          }
+        ],
+        "aspectRatio": "2"
+      },
+      {
+        "type": "text",
+        "data": [
+          {
+            "components": [
+              {
+                "type": "text",
+                "text": "Book the fastest selling seats at ",
+                "style": {
+                  "font": "small-medium",
+                  "fontColor": "#404040",
+                  "horizontalAlignment": "center"
+                }
+              },
+              {
+                "type": "text",
+                "text": "NO EXTRA COST!",
+                "style": {
+                  "font": "small-medium",
+                  "fontColor": "#5E8AFF",
+                  "horizontalAlignment": "center"
+                }
+              }
+            ],
+            "style": {
+              "horizontalAlignment": "center"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "showPriceWithoutDecimal": true,
+  "bestSeatCelebration": {
+    "styles": {
+      "footer-container-style": {
+        "backgroundColor": "#FFF1CC"
+      },
+      "footer-text": {
+        "font": "small-regular",
+        "fontColor": "#333333"
+      },
+      "post-animation-style": {
+        "font": "tiny-regular",
+        "fontColor": "#333333"
+      }
+    },
+    "bestSeatFooter": {
+      "styleId": "footer-container-style",
+      "data": [
+        {
+          "uuid": "BSC1",
+          "text": [
+            {
+              "uuid": "BSC2",
+              "styleId": "footer-text",
+              "text": "You have selected our bestselling seat(s)!"
+            }
+          ],
+          "image": {
+            "imageUrl": "https://assets-in.bmscdn.com/moviesmaster/movies-showtimes/v4/emoji.gif"
+          }
+        }
+      ],
+      "action": {
+        "textColor": "#FFFFFF",
+        "backgroundColor": "#EB4E62",
+        "cta": {
+          "type": "router",
+          "id": "proceedWithBookingFlow"
+        }
+      }
+    }
+  }
+}
