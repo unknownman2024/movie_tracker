@@ -1,103 +1,45 @@
-name: BMS Master Runner (Shard 1–8 + Combine)
+name: BMS Combine Runner
 
 on:
-  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - BMS Shard 1 Scraper
+      - BMS Shard 2 Scraper
+      - BMS Shard 3 Scraper
+      - BMS Shard 4 Scraper
+      - BMS Shard 5 Scraper
+      - BMS Shard 6 Scraper
+      - BMS Shard 7 Scraper
+      - BMS Shard 8 Scraper
+    types:
+      - completed
 
 permissions:
-  actions: read
   contents: write
 
 jobs:
-  run-all:
+  combine:
+    # run only if ALL shards succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 120
 
     steps:
-      # ---------------- TRIGGER SHARDS ----------------
-      - name: 🚀 Trigger all shard workflows
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const shards = [
-              "bms1.yml","bms2.yml","bms3.yml","bms4.yml",
-              "bms5.yml","bms6.yml","bms7.yml","bms8.yml"
-            ];
-
-            for (const wf of shards) {
-              await github.rest.actions.createWorkflowDispatch({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: wf,
-                ref: "main"
-              });
-              console.log(`Triggered ${wf}`);
-            }
-
-      # ---------------- WAIT FOR COMPLETION ----------------
-      - name: ⏳ Wait for all shards to finish
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const shardNames = [
-              "BMS Shard 1 Scraper",
-              "BMS Shard 2 Scraper",
-              "BMS Shard 3 Scraper",
-              "BMS Shard 4 Scraper",
-              "BMS Shard 5 Scraper",
-              "BMS Shard 6 Scraper",
-              "BMS Shard 7 Scraper",
-              "BMS Shard 8 Scraper",
-            ];
-
-            const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-            while (true) {
-              let completed = 0;
-
-              for (const name of shardNames) {
-                const runs = await github.rest.actions.listWorkflowRuns({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  workflow_id: name,
-                  per_page: 1
-                });
-
-                const run = runs.data.workflow_runs[0];
-                if (run && run.status === "completed") {
-                  completed++;
-                }
-              }
-
-              console.log(`Completed shards: ${completed}/8`);
-
-              if (completed === 8) {
-                console.log("✅ All shards finished");
-                break;
-              }
-
-              await sleep(30000); // wait 30 sec
-            }
-
-      # ---------------- CHECKOUT ----------------
       - name: 🧾 Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # ---------------- PYTHON ----------------
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # ---------------- RUN COMBINE ----------------
       - name: 🔗 Combine shard outputs
         run: |
           pip install pytz
           python combine_shards.py
 
-      # ---------------- COMMIT FINAL FILES ----------------
-      - name: 💾 Commit combined JSON
+      - name: 💾 Commit final JSONs
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
