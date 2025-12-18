@@ -24,7 +24,6 @@ NUM_WORKERS = 3
 MAX_ERRORS = 20
 MAX_RETRY_CLOUD = 2
 DUMP_EVERY = 25
-RAW_OUT = f"outputs/raw_1.json"   # for bms1.py
 IST = timezone(timedelta(hours=5, minutes=30))
 DATE_CODE = (datetime.now(IST) + timedelta(days=1)).strftime("%Y%m%d")
 
@@ -34,7 +33,9 @@ os.makedirs(BASE_DIR, exist_ok=True)
 DATA_FILE = f"{BASE_DIR}/venues_data.json"
 FETCHED_FILE = f"{BASE_DIR}/fetchedvenues.json"
 FAILED_FILE = f"{BASE_DIR}/failedvenues.json"
-
+OUT_DIR = f"output/{DATE_CODE}"
+os.makedirs(OUT_DIR, exist_ok=True)
+RAW_OUT = f"{OUT_DIR}/raw_1.json"
 lock = threading.Lock()
 thread_local = threading.local()
 error_count = 0
@@ -416,8 +417,9 @@ if __name__ == "__main__":
 
     dump_progress()
 
-    with open(RAW_OUT, "w") as f:
-        json.dump(all_data, f)
+    with open(RAW_OUT, "w", encoding="utf-8") as f:
+        json.dump(all_data, f, ensure_ascii=False)
 
+    print(f"✅ RAW saved → {RAW_OUT}")
     print("✅ RAW scrape done for shard 1")
     print("✅ DONE — summary & detailed generated")
