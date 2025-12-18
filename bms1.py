@@ -19,7 +19,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 # =====================================================
 # CONFIG
 # =====================================================
-NUM_WORKERS = 4
+NUM_WORKERS = 1
 MAX_ERRORS = 30
 SHARD_ID = 1            # bms1.py → 1
 DUMP_EVERY = 25
