@@ -1,0 +1,28 @@
+name: BMS Master Runner (Shard 1–8)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const wfs = [
+              "bms1.yml","bms2.yml","bms3.yml","bms4.yml",
+              "bms5.yml","bms6.yml","bms7.yml","bms8.yml"
+            ];
+            for (const wf of wfs) {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: wf,
+                ref: "main"
+              });
+              console.log(`Triggered ${wf}`);
+            }
