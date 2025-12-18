@@ -20,7 +20,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 # =====================================================
 NUM_WORKERS = 4
 MAX_ERRORS = 30
-SHARD_ID = 1   # 🔥 CHANGE PER FILE (1..8)
+SHARD_ID = 1          # 🔥 CHANGE PER FILE (1..8)
+DUMP_EVERY = 25       # 🔥 memory save interval
 
 IST = timezone(timedelta(hours=5, minutes=30))
 DATE_CODE = (datetime.now(IST) + timedelta(days=1)).strftime("%Y%m%d")
@@ -33,7 +34,9 @@ DETAILED_FILE = f"{BASE_DIR}/detailed{SHARD_ID}.json"
 
 lock = threading.Lock()
 thread_local = threading.local()
+
 error_count = 0
+fetch_count = 0
 all_data = {}
 
 # =====================================================
@@ -65,7 +68,6 @@ def headers():
 def get_scraper():
     if hasattr(thread_local, "scraper"):
         return thread_local.scraper
-
     s = cloudscraper.create_scraper(
         browser={"browser": "chrome", "platform": "windows", "desktop": True}
     )
@@ -125,7 +127,16 @@ def fetch_venue(venue_code):
 
     data = hybrid_fetch(url)
     sd = data.get("ShowDetails", [])
+
     if not sd:
+        print(f"⚠️ [EMPTY] {venue_code} | no ShowDetails")
+        return {}
+
+    api_date = sd[0].get("Date")
+    if api_date and str(api_date) != str(DATE_CODE):
+        print(
+            f"⏩ [SKIPPED] {venue_code} | API_DATE={api_date} | TARGET_DATE={DATE_CODE}"
+        )
         return {}
 
     venue_info = sd[0].get("Venues", {})
@@ -161,30 +172,20 @@ def fetch_venue(venue_code):
                     "address": venue_add,
                     "chain": chain,
                     "time": sh.get("ShowTime"),
-                    "session_id": sh.get("SessionId"),          # ✅ ADDED
-                    "audi": sh.get("Attributes", ""),           # ✅ ADDED
+                    "session_id": sh.get("SessionId"),
+                    "audi": sh.get("Attributes", ""),
                     "total": total,
                     "available": avail,
                     "sold": sold,
                     "gross": round(gross, 2),
                 })
 
-    return out
+    total_shows = sum(len(v) for v in out.values())
+    print(
+        f"✅ [FETCHED] {venue_code} | API_DATE={api_date} | TARGET_DATE={DATE_CODE} | shows={total_shows}"
+    )
 
-# =====================================================
-# THREAD SAFE WRAPPER
-# =====================================================
-def fetch_safe(vcode):
-    global error_count
-    try:
-        all_data[vcode] = fetch_venue(vcode)
-        print(f"✅ {vcode} fetched")
-    except Exception as e:
-        with lock:
-            error_count += 1
-            print(f"❌ {vcode} failed: {e}")
-            if error_count >= MAX_ERRORS:
-                sys.exit(1)
+    return out
 
 # =====================================================
 # AGGREGATION
@@ -230,8 +231,8 @@ def aggregate(all_data, venues_meta):
                     "venue": s["venue"],
                     "address": s["address"],
                     "time": s["time"],
-                    "audi": s["audi"],                 # ✅
-                    "session_id": s["session_id"],     # ✅
+                    "audi": s["audi"],
+                    "session_id": s["session_id"],
                     "totalSeats": total,
                     "available": s["available"],
                     "sold": sold,
@@ -259,6 +260,39 @@ def aggregate(all_data, venues_meta):
     return final, detailed
 
 # =====================================================
+# MEMORY DUMP
+# =====================================================
+def dump_memory(venues_meta):
+    summary, detailed = aggregate(all_data, venues_meta)
+    with open(SUMMARY_FILE, "w") as f:
+        json.dump(summary, f, indent=2)
+    with open(DETAILED_FILE, "w") as f:
+        json.dump(detailed, f, indent=2)
+    print(f"💾 Memory dump done at {fetch_count} venues")
+
+# =====================================================
+# THREAD SAFE FETCH
+# =====================================================
+def fetch_safe(vcode, venues_meta):
+    global error_count, fetch_count
+    try:
+        data = fetch_venue(vcode)
+        with lock:
+            all_data[vcode] = data
+            fetch_count += 1
+
+            if fetch_count % DUMP_EVERY == 0:
+                dump_memory(venues_meta)
+
+    except Exception as e:
+        with lock:
+            error_count += 1
+            print(f"❌ {vcode} failed: {e}")
+            if error_count >= MAX_ERRORS:
+                dump_memory(venues_meta)
+                sys.exit(1)
+
+# =====================================================
 # MAIN
 # =====================================================
 if __name__ == "__main__":
@@ -268,16 +302,12 @@ if __name__ == "__main__":
     print(f"🚀 Shard {SHARD_ID} started | workers={NUM_WORKERS}")
 
     with ThreadPoolExecutor(NUM_WORKERS) as exe:
-        futures = [exe.submit(fetch_safe, v) for v in venues.keys()]
+        futures = [
+            exe.submit(fetch_safe, v, venues)
+            for v in venues.keys()
+        ]
         for _ in as_completed(futures):
             pass
 
-    summary, detailed = aggregate(all_data, venues)
-
-    with open(SUMMARY_FILE, "w") as f:
-        json.dump(summary, f, indent=2)
-
-    with open(DETAILED_FILE, "w") as f:
-        json.dump(detailed, f, indent=2)
-
+    dump_memory(venues)
     print(f"✅ DONE — shard {SHARD_ID} complete")
