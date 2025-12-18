@@ -18,6 +18,7 @@ jobs:
             const workflows = [
               "bms1.yml",
               "bms2.yml",
+              "bms3.yml",
             ];
 
             for (const wf of workflows) {
