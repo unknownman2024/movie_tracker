@@ -1,0 +1,66 @@
+name: BMS Shard 5 Scraper
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      # ---------------- CHECKOUT ----------------
+      - name: 🧾 Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      # ---------------- PYTHON ----------------
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ---------------- CHROME ----------------
+      - name: 🌐 Install Google Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip
+          wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
+          rm -f google-chrome-stable_current_amd64.deb
+          google-chrome --version
+
+      # ---------------- DEPENDENCIES ----------------
+      - name: 📦 Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install selenium webdriver-manager cloudscraper
+
+      # ---------------- RUN SCRAPER ----------------
+      - name: 🚀 Run BMS shard 5 scraper
+        run: python bms5.py
+
+      # ---------------- COMMIT & PUSH ----------------
+      - name: 💾 Commit & push (AUTO-RESOLVE CONFLICTS)
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          git add advance/
+          git commit -m "Advance BMS shard 5 ($(date +'%Y-%m-%d'))" || echo "Nothing to commit"
+
+          # 🔁 retry-safe push
+          for i in 1 2 3; do
+            git pull --rebase origin main || true
+            git push origin main && break
+            echo "🔁 Push retry $i failed, retrying..."
+            sleep 3
+          done
+
+          # 🔥 final guarantee
+          git push --force-with-lease origin main || true
