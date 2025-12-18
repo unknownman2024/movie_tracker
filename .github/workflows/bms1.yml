@@ -1,36 +1,33 @@
-name: BMS Scraper 1
+name: BMS Shard 1 Scraper (Save to Repo)
 
 on:
   workflow_dispatch:
   schedule:
-    # Runs every day at 01:00 IST (19:30 UTC previous day)
+    # Daily 01:00 IST (19:30 UTC)
     - cron: "30 19 * * *"
+
+permissions:
+  contents: write   # 🔴 REQUIRED to push commits
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 360   # allow long Selenium runs (6 hours)
+    timeout-minutes: 360
 
     steps:
-      # -------------------------------------------------
-      # Checkout
-      # -------------------------------------------------
+      # ---------------- CHECKOUT ----------------
       - name: 🧾 Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
-      # -------------------------------------------------
-      # Python (with pip cache)
-      # -------------------------------------------------
+      # ---------------- PYTHON ----------------
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
-          cache-dependency-path: requirements.txt
 
-      # -------------------------------------------------
-      # Chrome
-      # -------------------------------------------------
+      # ---------------- CHROME ----------------
       - name: 🌐 Install Google Chrome
         run: |
           sudo apt-get update
@@ -39,58 +36,34 @@ jobs:
           sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
           google-chrome --version
 
-      # -------------------------------------------------
-      # Python dependencies
-      # -------------------------------------------------
+      # ---------------- DEPENDENCIES ----------------
       - name: 📦 Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install \
+            selenium \
+            webdriver-manager \
+            cloudscraper
 
-      # -------------------------------------------------
-      # Sanity check
-      # -------------------------------------------------
-      - name: 🧪 Verify Chrome + Selenium
-        run: |
-          python - << 'EOF'
-          from selenium import webdriver
-          from selenium.webdriver.chrome.options import Options
-
-          options = Options()
-          options.add_argument("--headless=new")
-          options.add_argument("--no-sandbox")
-          options.add_argument("--disable-dev-shm-usage")
-
-          driver = webdriver.Chrome(options=options)
-          driver.get("https://example.com")
-          print("TITLE:", driver.title)
-          driver.quit()
-          EOF
-
-      # -------------------------------------------------
-      # Run scraper
-      # -------------------------------------------------
-      - name: 🚀 Run Selenium-Wire scraper
+      # ---------------- RUN SCRAPER ----------------
+      - name: 🚀 Run BMS shard 1 scraper
         env:
           PYTHONUNBUFFERED: "1"
         run: |
           python bms1.py
 
-      # -------------------------------------------------
-      # Upload artifacts
-      # -------------------------------------------------
-      - name: 📦 Upload output artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: scraper-output
-          path: |
-            **/movie_summary.json
-            **/detailed.json
-            **/venues_data.json
-            **/fetchedvenues.json
+      # ---------------- SAVE TO GITHUB ----------------
+      - name: 💾 Commit and push output
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
 
-      # -------------------------------------------------
-      # Done
-      # -------------------------------------------------
+          git status
+          git add advance/
+
+          git commit -m "Advance BMS shard 1 data ($(date +'%Y-%m-%d'))" || echo "Nothing to commit"
+          git push
+
+      # ---------------- DONE ----------------
       - name: ✅ Job completed
-        run: echo "Scraping completed successfully"
+        run: echo "Shard 1 completed & data saved to repo"
