@@ -24,18 +24,19 @@ NUM_WORKERS = 3
 MAX_ERRORS = 20
 MAX_RETRY_CLOUD = 2
 DUMP_EVERY = 25
+SHARD_ID = 1
 
 IST = timezone(timedelta(hours=5, minutes=30))
 DATE_CODE = (datetime.now(IST) + timedelta(days=1)).strftime("%Y%m%d")
 
-BASE_DIR = os.path.join("advance", "date", DATE_CODE)
+BASE_DIR = os.path.join("advance", "data", DATE_CODE)
 os.makedirs(BASE_DIR, exist_ok=True)
 
-DATA_FILE = f"{BASE_DIR}/venues_data.json"
-FETCHED_FILE = f"{BASE_DIR}/fetchedvenues.json"
-FAILED_FILE = f"{BASE_DIR}/failedvenues.json"
-SUMMARY_FILE = f"{BASE_DIR}/movie_summary.json"
-DETAILED_FILE = f"{BASE_DIR}/detailed.json"
+DATA_FILE = f"{BASE_DIR}/venues_data{SHARD_ID}.json"
+FETCHED_FILE = f"{BASE_DIR}/fetchedvenues{SHARD_ID}.json"
+FAILED_FILE = f"{BASE_DIR}/failedvenues{SHARD_ID}.json"
+SUMMARY_FILE = f"{BASE_DIR}/movie_summary{SHARD_ID}.json"
+DETAILED_FILE = f"{BASE_DIR}/detailed{SHARD_ID}.json"
 
 lock = threading.Lock()
 thread_local = threading.local()
@@ -406,7 +407,7 @@ def aggregate(all_data, venues_meta):
 # MAIN
 # ==========================================================
 if __name__ == "__main__":
-    with open("venues1.json") as f:
+    with open(f"venues{SHARD_ID}.json") as f:
         venues = json.load(f)
 
     print(f"🚀 Hybrid start | workers={NUM_WORKERS}")
