@@ -28,7 +28,7 @@ DUMP_EVERY = 25
 IST = timezone(timedelta(hours=5, minutes=30))
 DATE_CODE = (datetime.now(IST) + timedelta(days=1)).strftime("%Y%m%d")
 
-BASE_DIR = DATE_CODE
+BASE_DIR = os.path.join("advance", "date", DATE_CODE)
 os.makedirs(BASE_DIR, exist_ok=True)
 
 DATA_FILE = f"{BASE_DIR}/venues_data.json"
