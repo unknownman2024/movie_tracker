@@ -19,7 +19,12 @@ jobs:
               "bms1.yml",
               "bms2.yml",
               "bms3.yml",
-            ];
+              "bms4.yml",
+              "bms5.yml",
+              "bms6.yml",
+              "bms7.yml",
+              "bms8.yml",
+              ];
 
             for (const wf of workflows) {
               await github.rest.actions.createWorkflowDispatch({
