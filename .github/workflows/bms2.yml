@@ -41,7 +41,7 @@ jobs:
           pip install selenium webdriver-manager cloudscraper
 
       # ---------------- RUN SCRAPER ----------------
-      - name: 🚀 Run BMS shard 1 scraper
+      - name: 🚀 Run BMS shard 2 scraper
         env:
           PYTHONUNBUFFERED: "1"
         run: |
