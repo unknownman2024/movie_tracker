@@ -3,10 +3,6 @@ name: BMS Shard 1 Scraper
 on:
   workflow_dispatch:
 
-concurrency:
-  group: bms-advance-main
-  cancel-in-progress: false
-
 permissions:
   contents: write
 
@@ -16,18 +12,20 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - name: 🧾 Checkout
+      # ---------------- CHECKOUT ----------------
+      - name: 🧾 Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: true
 
+      # ---------------- PYTHON ----------------
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: 🌐 Install Chrome
+      # ---------------- CHROME ----------------
+      - name: 🌐 Install Google Chrome
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip
@@ -36,20 +34,45 @@ jobs:
           rm -f google-chrome-stable_current_amd64.deb
           google-chrome --version
 
-      - name: 📦 Install deps
+      # ---------------- DEPENDENCIES ----------------
+      - name: 📦 Install Python dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install selenium webdriver-manager cloudscraper
 
-      - name: 🚀 Run shard 1
-        run: python bms1.py
+      # ---------------- RUN SCRAPER ----------------
+      - name: 🚀 Run BMS shard 1 scraper
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          python bms1.py
 
-      - name: 💾 Commit & push (NO FAIL)
+  push:
+    needs: scrape
+    runs-on: ubuntu-latest
+
+    # 🔴 Serialize ONLY the push
+    concurrency:
+      group: bms-advance-main
+      cancel-in-progress: false
+
+    steps:
+      # ---------------- CHECKOUT FOR PUSH ----------------
+      - name: 🧾 Checkout repo (push)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      # ---------------- COMMIT & PUSH ----------------
+      - name: 💾 Commit and push output (NO FAIL)
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
 
+          git status
           git add advance/
+
           git commit -m "Advance BMS shard 1 ($(date +'%Y-%m-%d'))" || echo "Nothing to commit"
 
           git pull --rebase origin main || true
