@@ -3,6 +3,7 @@ import os
 import random
 import time
 import threading
+import signal
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
@@ -11,9 +12,10 @@ import cloudscraper
 # =====================================================
 # CONFIG
 # =====================================================
-SHARD_ID = 1
+SHARD_ID = 2
 API_TIMEOUT = 12
-MAX_RECOVERY_ROUNDS = 10
+HARD_TIMEOUT = 15
+MAX_RECOVERY_ROUNDS = 5
 
 IST = timezone(timedelta(hours=5, minutes=30))
 DATE_CODE = (datetime.now(IST) + timedelta(days=1)).strftime("%Y%m%d")
@@ -37,14 +39,35 @@ def log(msg):
         f.write(line + "\n")
 
 # =====================================================
+# HARD TIMEOUT (ANTI-FREEZE)
+# =====================================================
+class TimeoutError(Exception):
+    pass
+
+def _timeout_handler(signum, frame):
+    raise TimeoutError("Hard timeout hit")
+
+def hard_timeout(seconds):
+    def deco(fn):
+        def wrapper(*args, **kwargs):
+            signal.signal(signal.SIGALRM, _timeout_handler)
+            signal.alarm(seconds)
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                signal.alarm(0)
+        return wrapper
+    return deco
+
+# =====================================================
 # STATE
 # =====================================================
 thread_local = threading.local()
 all_data = {}
-empty_venues = set()
+retry_venues = set()   # ONLY real failures go here
 
 # =====================================================
-# HEADERS
+# USER AGENTS
 # =====================================================
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
@@ -52,55 +75,81 @@ USER_AGENTS = [
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/118 Safari/537.36",
 ]
 
-def headers():
-    ip = ".".join(str(random.randint(10, 240)) for _ in range(4))
-    return {
-        "User-Agent": random.choice(USER_AGENTS),
-        "Accept": "application/json, text/plain, */*",
-        "Origin": "https://in.bookmyshow.com",
-        "Referer": "https://in.bookmyshow.com/",
-        "X-Forwarded-For": ip,
-    }
-
 # =====================================================
-# CLOUDSCRAPER
+# IDENTITY (STICKY SESSION)
 # =====================================================
-def get_scraper():
-    if hasattr(thread_local, "scraper"):
-        return thread_local.scraper
+class Identity:
+    def __init__(self):
+        self.ua = random.choice(USER_AGENTS)
+        self.ip = ".".join(str(random.randint(20, 230)) for _ in range(4))
+        self.scraper = cloudscraper.create_scraper(
+            browser={"browser": "chrome", "platform": "windows", "desktop": True}
+        )
 
-    log("🧠 Creating cloudscraper session")
-    s = cloudscraper.create_scraper(
-        browser={"browser": "chrome", "platform": "windows", "desktop": True}
-    )
-    thread_local.scraper = s
-    return s
+    def headers(self):
+        return {
+            "User-Agent": self.ua,
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en-IN,en;q=0.9",
+            "Origin": "https://in.bookmyshow.com",
+            "Referer": "https://in.bookmyshow.com/",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "cors",
+            "sec-ch-ua": '"Chromium";v="120", "Not=A?Brand";v="99"',
+            "X-Forwarded-For": self.ip,
+        }
+
+def get_identity():
+    if not hasattr(thread_local, "identity"):
+        log("🧠 Creating new browser identity")
+        thread_local.identity = Identity()
+    return thread_local.identity
 
 def reset_identity():
-    if hasattr(thread_local, "scraper"):
-        del thread_local.scraper
-    log("🔄 Identity reset")
+    if hasattr(thread_local, "identity"):
+        del thread_local.identity
+    log("🔄 Browser identity reset")
 
 # =====================================================
 # API FETCH
 # =====================================================
+@hard_timeout(HARD_TIMEOUT)
 def fetch_api_raw(venue_code):
+    ident = get_identity()
     url = (
         "https://in.bookmyshow.com/api/v2/mobile/showtimes/byvenue"
         f"?venueCode={venue_code}&dateCode={DATE_CODE}"
     )
-    r = get_scraper().get(url, headers=headers(), timeout=API_TIMEOUT)
-    if not r.text.strip().startswith("{"):
-        raise RuntimeError("Non-JSON response")
+
+    r = ident.scraper.get(
+        url,
+        headers=ident.headers(),
+        timeout=API_TIMEOUT
+    )
+
+    txt = r.text.strip()
+    if not txt.startswith("{"):
+        raise RuntimeError("Blocked / HTML response")
+
     return r.json()
 
 # =====================================================
-# PARSER
+# PARSER — RETURNS (parsed_data, status)
 # =====================================================
-def parse_payload(data):
+def parse_payload(data, venue_code):
+    # Case 1: Venue exists but no shows for ANY date
+    if data.get("AllShowDatesDisabled") is True:
+        log(f"⏩ ALL DATES DISABLED {venue_code}")
+        return {}, "ALL_DISABLED"
+
     sd = data.get("ShowDetails", [])
     if not sd:
-        return {}
+        return {}, "NO_SHOWS"
+
+    api_date = sd[0].get("Date")
+    if api_date and str(api_date) != str(DATE_CODE):
+        log(f"⏩ DATE MISMATCH {venue_code} | API:{api_date} EXPECTED:{DATE_CODE}")
+        return {}, "DATE_MISMATCH"
 
     venue_info = sd[0].get("Venues", {})
     venue_name = venue_info.get("VenueName", "")
@@ -144,7 +193,10 @@ def parse_payload(data):
                     "gross": round(gross, 2),
                 })
 
-    return out if shows else {}
+    if shows:
+        return out, "OK"
+
+    return {}, "NO_SHOWS"
 
 # =====================================================
 # MAIN
@@ -152,62 +204,94 @@ def parse_payload(data):
 if __name__ == "__main__":
     log("🚀 SCRIPT STARTED")
 
-    with open("venues1.json", "r") as f:
+    with open(f"venues{SHARD_ID}.json", "r", encoding="utf-8") as f:
         venues = json.load(f)
 
-    log(f"🎯 Venues loaded: {len(venues)}")
+    venue_codes = list(venues.keys())
+    log(f"🎯 Venues loaded: {len(venue_codes)}")
 
-    # ---------------- PASS 1 ----------------
-    log("▶ PASS-1 : API fetch")
-    for i, vcode in enumerate(venues.keys(), start=1):
-        log(f"[P1 {i}/{len(venues)}] {vcode}")
+    # ---------------- PASS-1 ----------------
+    log("▶ PASS-1 : Primary fetch")
+    random.shuffle(venue_codes)
+
+    for i, vcode in enumerate(venue_codes, 1):
+        log(f"[P1 {i}/{len(venue_codes)}] {vcode}")
         try:
-            data = parse_payload(fetch_api_raw(vcode))
-            if data:
-                all_data[vcode] = data
+            raw = fetch_api_raw(vcode)
+            parsed, status = parse_payload(raw, vcode)
+
+            if status == "OK":
+                all_data[vcode] = parsed
                 log(f"✅ FETCHED {vcode}")
+
+            elif status in ("DATE_MISMATCH", "ALL_DISABLED", "NO_SHOWS"):
+                log(f"✅ FETCHED ({status}) {vcode}")
+
             else:
-                empty_venues.add(vcode)
-                log(f"⚠️ EMPTY {vcode}")
+                retry_venues.add(vcode)
+                log(f"❌ FAILED {vcode}")
+
         except Exception as e:
-            empty_venues.add(vcode)
-            log(f"❌ ERROR {vcode} | {e}")
+            retry_venues.add(vcode)
+            log(f"❌ ERROR {vcode} | {type(e).__name__}")
+            reset_identity()
 
-    # ---------------- PASS 2 ----------------
-    reset_identity()
-    log(f"▶ PASS-2 : API retry ({len(empty_venues)})")
+        time.sleep(random.uniform(0.35, 0.75))
 
-    for vcode in list(empty_venues):
+    # ---------------- PASS-2 ----------------
+    log(f"▶ PASS-2 : Soft retry ({len(retry_venues)})")
+
+    for vcode in list(retry_venues):
         try:
-            data = parse_payload(fetch_api_raw(vcode))
-            if data:
-                all_data[vcode] = data
-                empty_venues.remove(vcode)
-                log(f"♻️ RECOVERED {vcode}")
-        except Exception:
-            pass
+            raw = fetch_api_raw(vcode)
+            parsed, status = parse_payload(raw, vcode)
 
-    # ---------------- RECOVERY LOOPS ----------------
+            if status == "OK":
+                all_data[vcode] = parsed
+                retry_venues.remove(vcode)
+                log(f"♻️ RECOVERED {vcode}")
+
+            elif status in ("DATE_MISMATCH", "ALL_DISABLED", "NO_SHOWS"):
+                retry_venues.remove(vcode)
+                log(f"✅ FETCHED ({status}) {vcode}")
+
+        except Exception:
+            time.sleep(random.uniform(0.8, 1.2))
+
+    # ---------------- RECOVERY ----------------
     for round_no in range(1, MAX_RECOVERY_ROUNDS + 1):
-        if not empty_venues:
+        if not retry_venues:
             break
 
-        log(f"🔁 RECOVERY ROUND {round_no} ({len(empty_venues)} venues)")
+        log(f"🔁 RECOVERY ROUND {round_no} ({len(retry_venues)})")
         reset_identity()
-        time.sleep(random.uniform(1.5, 3.0))
 
-        for vcode in list(empty_venues):
+        retry = list(retry_venues)
+        random.shuffle(retry)
+        time.sleep(min(2 + round_no * 0.8, 6))
+
+        for vcode in retry:
+            log(f"🔎 RETRY {vcode}")
             try:
-                data = parse_payload(fetch_api_raw(vcode))
-                if data:
-                    all_data[vcode] = data
-                    empty_venues.remove(vcode)
+                raw = fetch_api_raw(vcode)
+                parsed, status = parse_payload(raw, vcode)
+
+                if status == "OK":
+                    all_data[vcode] = parsed
+                    retry_venues.remove(vcode)
                     log(f"🛠️ RECOVERED {vcode}")
-            except Exception:
-                continue
+
+                elif status in ("DATE_MISMATCH", "ALL_DISABLED", "NO_SHOWS"):
+                    retry_venues.remove(vcode)
+                    log(f"✅ FETCHED ({status}) {vcode}")
+
+            except Exception as e:
+                log(f"⏰ FAIL {vcode} | {type(e).__name__}")
+                reset_identity()
+                time.sleep(random.uniform(1.2, 2.0))
 
     # ---------------- SAVE ----------------
-    log("💾 Writing output files")
+    log("💾 Writing output")
 
     summary = {}
     detailed = []
@@ -234,7 +318,7 @@ if __name__ == "__main__":
                     "date": DATE_CODE
                 })
 
-    final = {
+    final_summary = {
         k: {
             "shows": v["shows"],
             "gross": round(v["gross"], 2),
@@ -244,10 +328,10 @@ if __name__ == "__main__":
         } for k, v in summary.items()
     }
 
-    with open(SUMMARY_FILE, "w") as f:
-        json.dump(final, f, indent=2)
+    with open(SUMMARY_FILE, "w", encoding="utf-8") as f:
+        json.dump(final_summary, f, indent=2)
 
-    with open(DETAILED_FILE, "w") as f:
+    with open(DETAILED_FILE, "w", encoding="utf-8") as f:
         json.dump(detailed, f, indent=2)
 
-    log(f"✅ DONE — recovered {(len(venues) - len(empty_venues))}/{len(venues)} venues")
+    log(f"✅ DONE — fetched {len(venue_codes) - len(retry_venues)}/{len(venue_codes)} venues")
