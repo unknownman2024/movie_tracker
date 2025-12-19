@@ -36,7 +36,7 @@ def save_json(path, data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 # =====================================================
-# NORMALIZE ROW
+# NORMALIZE ROW (🔥 KEY FIX)
 # =====================================================
 def normalize_row(r):
     r["movie"] = r.get("movie") or "Unknown"
@@ -108,7 +108,7 @@ for i in range(1, 10):
 print(f"📊 Raw rows: {len(all_rows)}")
 
 # =====================================================
-# NORMALIZE
+# NORMALIZE ALL ROWS (🔥 IMPORTANT)
 # =====================================================
 all_rows = [normalize_row(r) for r in all_rows]
 
@@ -120,7 +120,7 @@ print(f"🧹 Duplicates removed: {dupes}")
 print(f"🎯 Final detailed rows: {len(final_rows)}")
 
 # =====================================================
-# SORT
+# SORT FINAL DETAILED
 # =====================================================
 final_rows.sort(
     key=lambda x: (
@@ -132,7 +132,7 @@ final_rows.sort(
 )
 
 # =====================================================
-# SAVE FINAL DETAILED
+# SAVE finaldetailed.json
 # =====================================================
 save_json(
     FINAL_DETAILED,
@@ -145,7 +145,7 @@ save_json(
 print("🎉 finaldetailed.json saved")
 
 # =====================================================
-# BUILD SUMMARY
+# BUILD FINAL SUMMARY
 # =====================================================
 summary = {}
 
@@ -208,7 +208,6 @@ for r in final_rows:
     d["gross"] += gross
     d["sold"] += sold
     d["totalSeats"] += total
-
     if occ >= 98:
         d["housefull"] += 1
     elif occ >= 50:
@@ -232,7 +231,6 @@ for r in final_rows:
     c["gross"] += gross
     c["sold"] += sold
     c["totalSeats"] += total
-
     if occ >= 98:
         c["housefull"] += 1
     elif occ >= 50:
@@ -286,7 +284,7 @@ for movie, m in summary.items():
         })
 
 # =====================================================
-# SAVE FINAL SUMMARY
+# SAVE finalsummary.json
 # =====================================================
 save_json(
     FINAL_SUMMARY,
@@ -297,25 +295,6 @@ save_json(
 )
 
 print("🎉 finalsummary.json created successfully")
-
-# =====================================================
-# CLEANUP SHARDS (ONLY AFTER SUCCESS)
-# =====================================================
-if final_rows:
-    deleted = 0
-    for i in range(1, 10):
-        p = os.path.join(BASE_DIR, f"detailed{i}.json")
-        if os.path.exists(p):
-            try:
-                os.remove(p)
-                deleted += 1
-                print(f"🗑️ Deleted: detailed{i}.json")
-            except Exception as e:
-                print(f"⚠️ Could not delete detailed{i}.json → {e}")
-    print(f"🧹 Cleanup complete | Deleted files: {deleted}")
-else:
-    print("⚠️ final_rows empty → cleanup skipped")
-
-print("📄 FINAL FILES READY:")
+print("📄 Files ready:")
 print(f"   • {FINAL_DETAILED}")
 print(f"   • {FINAL_SUMMARY}")
