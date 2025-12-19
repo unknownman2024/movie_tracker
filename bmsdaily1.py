@@ -220,11 +220,16 @@ if __name__ == "__main__":
 
             # 🔐 APPLY CUTOFF ONLY HERE
             for r in parse_payload(raw):
-                if minutes_left(r["time"]) <= CUTOFF_MINUTES:
+                mins = minutes_left(r["time"])
+            
+                if mins <= CUTOFF_MINUTES:
+                    r["minsLeft"] = round(mins, 1)
+            
                     r["city"]   = venues[vcode].get("City", "Unknown")
                     r["state"]  = venues[vcode].get("State", "Unknown")
                     r["source"] = "BMS"
                     r["date"]   = DATE_CODE
+            
                     fetched.append(r)
 
         except Exception as e:
