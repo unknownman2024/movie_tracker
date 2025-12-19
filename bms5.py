@@ -105,14 +105,30 @@ def reset_identity():
 @hard_timeout(HARD_TIMEOUT)
 def fetch_api_raw(venue_code):
     ident = get_identity()
-    url = (
-        "https://in.bookmyshow.com/api/v2/mobile/showtimes/byvenue"
-        f"?venueCode={venue_code}&dateCode={DATE_CODE}"
+
+    BASE_URL = "".join(
+        s[::-1] for s in [
+            "enuevyb/semitwohs/elibo",
+            "m/2v/ipa/",
+            "moc.wohsymkoob.ni//:sptth"
+        ][::-1]
     )
-    r = ident.scraper.get(url, headers=ident.headers(), timeout=API_TIMEOUT)
+
+    r = ident.scraper.get(
+        BASE_URL,
+        params={
+            "venueCode": venue_code,
+            "dateCode": DATE_CODE
+        },
+        headers=ident.headers(),
+        timeout=API_TIMEOUT
+    )
+
     if not r.text.strip().startswith("{"):
         raise RuntimeError("Blocked / HTML")
+
     return r.json()
+
 
 # =====================================================
 # PARSER
