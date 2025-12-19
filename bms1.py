@@ -7,19 +7,13 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 import cloudscraper
-
-# -------- Selenium --------
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+import requests
 
 # =====================================================
 # CONFIG
 # =====================================================
 SHARD_ID = 1
-API_TIMEOUT = 12
-SEL_TIMEOUT = 25
+API_TIMEOUT = 10
 
 IST = timezone(timedelta(hours=5, minutes=30))
 DATE_CODE = (datetime.now(IST) + timedelta(days=1)).strftime("%Y%m%d")
@@ -55,57 +49,63 @@ empty_venues = set()
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/119 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/118 Safari/537.36",
 ]
 
 def headers():
-    ip = ".".join(str(random.randint(10, 240)) for _ in range(4))
     return {
         "User-Agent": random.choice(USER_AGENTS),
         "Accept": "application/json, text/plain, */*",
         "Origin": "https://in.bookmyshow.com",
         "Referer": "https://in.bookmyshow.com/",
-        "X-Forwarded-For": ip,
     }
 
 # =====================================================
-# CLOUDSCRAPER
+# SAFE CLOUDSCRAPER (NO HANG)
 # =====================================================
 def get_scraper():
     if hasattr(thread_local, "scraper"):
         return thread_local.scraper
-    log("🧠 Creating cloudscraper session")
-    s = cloudscraper.create_scraper(
-        browser={"browser": "chrome", "platform": "windows", "desktop": True}
-    )
+
+    log("🧠 Creating SAFE cloudscraper session")
+
+    # ⚠️ DO NOT use browser={} here
+    s = cloudscraper.create_scraper()
+    s.headers.update(headers())
+
     thread_local.scraper = s
     return s
 
-def reset_identity():
+def reset_scraper():
     if hasattr(thread_local, "scraper"):
         del thread_local.scraper
-    if hasattr(thread_local, "driver"):
-        try:
-            thread_local.driver.quit()
-        except Exception:
-            pass
-        del thread_local.driver
-    log("🔄 Identity reset")
+    log("🔄 Scraper reset")
 
+# =====================================================
+# API FETCH (GUARDED)
+# =====================================================
 def fetch_api_raw(venue_code):
     url = (
         "https://in.bookmyshow.com/api/v2/mobile/showtimes/byvenue"
         f"?venueCode={venue_code}&dateCode={DATE_CODE}"
     )
-    r = get_scraper().get(url, headers=headers(), timeout=API_TIMEOUT)
+
+    scraper = get_scraper()
+
+    log(f"🌐 GET {venue_code}")
+    r = scraper.get(url, timeout=API_TIMEOUT)
+
+    if r.status_code != 200:
+        raise RuntimeError(f"HTTP {r.status_code}")
+
     if not r.text.strip().startswith("{"):
-        raise RuntimeError("Non-JSON response")
+        raise RuntimeError("Non-JSON")
+
     return r.json()
 
 # =====================================================
-# PARSER
+# PARSE
 # =====================================================
-def parse_payload(data, venue_code):
+def parse_payload(data):
     sd = data.get("ShowDetails", [])
     if not sd:
         return {}
@@ -119,6 +119,7 @@ def parse_payload(data, venue_code):
 
     for ev in sd[0].get("Event", []):
         title = ev.get("EventTitle", "Unknown")
+
         for ch in ev.get("ChildEvents", []):
             dim  = ch.get("EventDimension", "").strip()
             lang = ch.get("EventLanguage", "").strip()
@@ -145,8 +146,6 @@ def parse_payload(data, venue_code):
                     "venue": venue_name,
                     "address": venue_add,
                     "time": sh.get("ShowTime"),
-                    "session_id": sh.get("SessionId"),
-                    "audi": sh.get("Attributes", ""),
                     "total": total,
                     "available": avail,
                     "sold": sold,
@@ -154,50 +153,6 @@ def parse_payload(data, venue_code):
                 })
 
     return out if shows else {}
-
-# =====================================================
-# SELENIUM (LOGGED)
-# =====================================================
-def get_driver():
-    if hasattr(thread_local, "driver"):
-        return thread_local.driver
-
-    log("🌐 [SEL] Starting browser")
-    o = Options()
-    o.add_argument("--headless=new")
-    o.add_argument("--no-sandbox")
-    o.add_argument("--disable-dev-shm-usage")
-
-    d = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()),
-        options=o,
-    )
-    d.set_page_load_timeout(SEL_TIMEOUT)
-    thread_local.driver = d
-    return d
-
-def fetch_via_selenium(venue_code):
-    api_url = (
-        "https://in.bookmyshow.com/api/v2/mobile/showtimes/byvenue"
-        f"?venueCode={venue_code}&dateCode={DATE_CODE}"
-    )
-    log(f"🌐 [SEL] Hitting API for {venue_code}")
-    d = get_driver()
-    d.get(api_url)
-
-    body = d.page_source
-    log(f"📄 [SEL] page_source length={len(body)} for {venue_code}")
-
-    body = body.strip()
-    if not body.startswith("{"):
-        log(f"⚠️ [SEL] Non-JSON response for {venue_code}")
-        return {}
-
-    try:
-        return json.loads(body)
-    except Exception as e:
-        log(f"❌ [SEL] JSON decode failed for {venue_code} | {e}")
-        return {}
 
 # =====================================================
 # MAIN
@@ -209,105 +164,27 @@ if __name__ == "__main__":
         venues = json.load(f)
 
     log(f"🎯 Venues loaded: {len(venues)}")
-
-    # ---------- PHASE 1 ----------
     log("▶ PHASE-1 : API fetch")
-    for vcode in venues.keys():
+
+    for idx, vcode in enumerate(venues.keys(), start=1):
+        log(f"[P1 {idx}/{len(venues)}] {vcode}")
         try:
-            raw = fetch_api_raw(vcode)
-            data = parse_payload(raw, vcode)
+            data = parse_payload(fetch_api_raw(vcode))
             if data:
                 all_data[vcode] = data
+                log(f"✅ FETCHED {vcode}")
             else:
                 empty_venues.add(vcode)
+                log(f"⚠️ EMPTY {vcode}")
         except Exception as e:
             empty_venues.add(vcode)
-            log(f"❌ P1 error {vcode} | {e}")
+            log(f"❌ ERROR {vcode} | {e}")
+            reset_scraper()
 
-    # ---------- PHASE 2 ----------
-    log(f"▶ PHASE-2 : API retry ({len(empty_venues)})")
-    reset_identity()
+    log(f"✅ PHASE-1 DONE | fetched={len(all_data)} empty={len(empty_venues)}")
 
-    for vcode in list(empty_venues):
-        try:
-            raw = fetch_api_raw(vcode)
-            data = parse_payload(raw, vcode)
-            if data:
-                all_data[vcode] = data
-                empty_venues.remove(vcode)
-        except Exception:
-            pass
-
-    # ---------- PHASE 3 ----------
-    log(f"▶ PHASE-3 : Selenium verify ({len(empty_venues)})")
-    for vcode in list(empty_venues):
-        try:
-            raw = fetch_via_selenium(vcode)
-            data = parse_payload(raw, vcode)
-            if data:
-                all_data[vcode] = data
-                empty_venues.remove(vcode)
-        except Exception:
-            pass
-
-    # ---------- PHASE 4 ----------
-    log(f"▶ PHASE-4 : Final Cloudscraper retry ({len(empty_venues)})")
-    reset_identity()
-
-    for vcode in list(empty_venues):
-        time.sleep(random.uniform(1.0, 2.0))
-        try:
-            raw = fetch_api_raw(vcode)
-            data = parse_payload(raw, vcode)
-            if data:
-                all_data[vcode] = data
-                empty_venues.remove(vcode)
-                log(f"♻️ P4 RECOVERED {vcode}")
-        except Exception:
-            pass
-
-    # ---------- SAVE ----------
-    log("💾 Writing output")
-
-    summary = {}
-    detailed = []
-
-    for vcode, movies in all_data.items():
-        for movie, shows in movies.items():
-            m = summary.setdefault(movie, {
-                "shows": 0, "gross": 0, "sold": 0, "totalSeats": 0, "venues": set()
-            })
-            m["venues"].add(vcode)
-            for s in shows:
-                m["shows"] += 1
-                m["gross"] += s["gross"]
-                m["sold"] += s["sold"]
-                m["totalSeats"] += s["total"]
-
-                detailed.append({
-                    "movie": movie,
-                    "venue": s["venue"],
-                    "time": s["time"],
-                    "sold": s["sold"],
-                    "total": s["total"],
-                    "gross": s["gross"],
-                    "date": DATE_CODE
-                })
-
-    final = {
-        k: {
-            "shows": v["shows"],
-            "gross": round(v["gross"], 2),
-            "sold": v["sold"],
-            "totalSeats": v["totalSeats"],
-            "venues": len(v["venues"])
-        } for k, v in summary.items()
-    }
-
+    # ---- save minimal output to confirm progress ----
     with open(SUMMARY_FILE, "w") as f:
-        json.dump(final, f, indent=2)
+        json.dump({"fetched": len(all_data), "empty": len(empty_venues)}, f, indent=2)
 
-    with open(DETAILED_FILE, "w") as f:
-        json.dump(detailed, f, indent=2)
-
-    log(f"✅ DONE | recovered={len(all_data)} | still_empty={len(empty_venues)}")
+    log("🧪 PHASE-1 COMPLETE — SCRIPT ALIVE")
