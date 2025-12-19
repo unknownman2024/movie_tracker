@@ -5,7 +5,7 @@ import time
 import threading
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 
 import cloudscraper
 
@@ -13,10 +13,10 @@ import cloudscraper
 # CONFIG
 # =====================================================
 SHARD_ID = 1
-API_TIMEOUT = 12
+API_TIMEOUT = 10
 
 MAX_RECOVERY_ROUNDS = 10
-MAX_WORKERS = 5   # ⚠️ keep 4–6 only (CF safe)
+MAX_WORKERS = 4   # ⚠️ SAFE LIMIT (do not increase blindly)
 
 IST = timezone(timedelta(hours=5, minutes=30))
 DATE_CODE = (datetime.now(IST) + timedelta(days=1)).strftime("%Y%m%d")
@@ -66,7 +66,7 @@ def headers():
     }
 
 # =====================================================
-# CLOUDSCRAPER
+# CLOUDSCRAPER (THREAD LOCAL)
 # =====================================================
 def get_scraper():
     if hasattr(thread_local, "scraper"):
@@ -83,6 +83,12 @@ def reset_identity():
     if hasattr(thread_local, "scraper"):
         del thread_local.scraper
     log("🔄 Identity reset")
+
+# =====================================================
+# THREAD INITIALIZER (CRITICAL FIX)
+# =====================================================
+def init_thread():
+    reset_identity()
 
 # =====================================================
 # API FETCH
@@ -150,16 +156,13 @@ def parse_payload(data):
     return out if shows else {}
 
 # =====================================================
-# PARALLEL RECOVERY WORKER
+# RECOVERY WORKER (NO RESET HERE!)
 # =====================================================
 def recovery_worker(vcode):
     try:
-        reset_identity()
-        time.sleep(random.uniform(0.8, 1.6))
-
+        time.sleep(random.uniform(0.3, 0.8))
         raw = fetch_api_raw(vcode)
         data = parse_payload(raw)
-
         if data:
             return vcode, data
     except Exception:
@@ -180,19 +183,15 @@ if __name__ == "__main__":
 
     # ---------------- PASS 1 ----------------
     log("▶ PASS-1 : API fetch")
-    for i, vcode in enumerate(venues.keys(), start=1):
-        log(f"[P1 {i}/{len(venues)}] {vcode}")
+    for vcode in venues.keys():
         try:
             data = parse_payload(fetch_api_raw(vcode))
             if data:
                 all_data[vcode] = data
-                log(f"✅ FETCHED {vcode}")
             else:
                 empty_venues.add(vcode)
-                log(f"⚠️ EMPTY {vcode}")
-        except Exception as e:
+        except Exception:
             empty_venues.add(vcode)
-            log(f"❌ ERROR {vcode} | {e}")
 
     # ---------------- PASS 2 ----------------
     reset_identity()
@@ -204,7 +203,6 @@ if __name__ == "__main__":
             if data:
                 all_data[vcode] = data
                 empty_venues.remove(vcode)
-                log(f"♻️ RECOVERED {vcode}")
         except Exception:
             pass
 
@@ -214,24 +212,31 @@ if __name__ == "__main__":
             break
 
         log(f"🔁 PARALLEL RECOVERY ROUND {round_no} | Pending: {len(empty_venues)}")
-        recovered_this_round = 0
+        recovered = 0
 
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            futures = {
-                executor.submit(recovery_worker, vcode): vcode
+        with ThreadPoolExecutor(
+            max_workers=MAX_WORKERS,
+            initializer=init_thread
+        ) as executor:
+
+            futures = [
+                executor.submit(recovery_worker, vcode)
                 for vcode in list(empty_venues)
-            }
+            ]
 
-            for future in as_completed(futures):
-                vcode, data = future.result()
-                if data:
-                    all_data[vcode] = data
-                    empty_venues.remove(vcode)
-                    recovered_this_round += 1
-                    log(f"🛠️ RECOVERED {vcode}")
+            try:
+                for future in as_completed(futures, timeout=60):
+                    vcode, data = future.result(timeout=API_TIMEOUT + 2)
+                    if data:
+                        all_data[vcode] = data
+                        empty_venues.remove(vcode)
+                        recovered += 1
+                        log(f"🛠️ RECOVERED {vcode}")
+            except TimeoutError:
+                log("⏱️ ROUND TIMEOUT — moving on")
 
-        log(f"📊 ROUND {round_no} RECOVERED: {recovered_this_round}")
-        time.sleep(2.5 if recovered_this_round else 4.5)
+        log(f"📊 ROUND {round_no} RECOVERED: {recovered}")
+        time.sleep(3 if recovered else 6)
 
     # ---------------- SAVE ----------------
     log("💾 Writing output files")
@@ -242,10 +247,8 @@ if __name__ == "__main__":
     for vcode, movies in all_data.items():
         for movie, shows in movies.items():
             m = summary.setdefault(movie, {
-                "shows": 0,
-                "gross": 0,
-                "sold": 0,
-                "totalSeats": 0,
+                "shows": 0, "gross": 0,
+                "sold": 0, "totalSeats": 0,
                 "venues": set()
             })
             m["venues"].add(vcode)
@@ -273,8 +276,7 @@ if __name__ == "__main__":
             "sold": v["sold"],
             "totalSeats": v["totalSeats"],
             "venues": len(v["venues"])
-        }
-        for k, v in summary.items()
+        } for k, v in summary.items()
     }
 
     with open(SUMMARY_FILE, "w") as f:
