@@ -4,7 +4,6 @@ import random
 import time
 import threading
 import signal
-from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 import cloudscraper
@@ -16,13 +15,16 @@ SHARD_ID = 1
 API_TIMEOUT = 12
 HARD_TIMEOUT = 15
 
+# ⏱️ cutoff window (minutes)
+CUTOFF_MINUTES = 200   # ≈ 3h 20m
+
 IST = timezone(timedelta(hours=5, minutes=30))
 
-# 🔥 TODAY
+# 🔥 TODAY ONLY
 DATE_CODE = datetime.now(IST).strftime("%Y%m%d")
 
 BASE_DIR = os.path.join("daily", "data", DATE_CODE)
-LOG_DIR = os.path.join(BASE_DIR, "logs")
+LOG_DIR  = os.path.join(BASE_DIR, "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
 DETAILED_FILE = f"{BASE_DIR}/detailed{SHARD_ID}.json"
@@ -61,7 +63,7 @@ def hard_timeout(seconds):
     return deco
 
 # =====================================================
-# USER AGENTS / IDENTITY
+# IDENTITY / UA ROTATION
 # =====================================================
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36",
@@ -114,6 +116,26 @@ def fetch_api_raw(venue_code):
     if not r.text.strip().startswith("{"):
         raise RuntimeError("Blocked / HTML")
     return r.json()
+
+# =====================================================
+# TIME HELPERS (CUTOFF)
+# =====================================================
+def minutes_left(show_time_str):
+    """
+    Convert 'hh:mm AM/PM' to minutes left from now (IST).
+    """
+    try:
+        now = datetime.now(IST)
+        t = datetime.strptime(show_time_str, "%I:%M %p")
+        t = t.replace(
+            year=now.year,
+            month=now.month,
+            day=now.day,
+            tzinfo=IST
+        )
+        return (t - now).total_seconds() / 60
+    except Exception:
+        return 9999
 
 # =====================================================
 # PARSER
@@ -170,7 +192,7 @@ def parse_payload(data):
     return out
 
 # =====================================================
-# SHOW KEY (NEVER CHANGES)
+# STABLE SHOW KEY
 # =====================================================
 def show_key(r):
     return (
@@ -195,16 +217,20 @@ if __name__ == "__main__":
         log(f"[{i}/{len(venues)}] {vcode}")
         try:
             raw = fetch_api_raw(vcode)
-            rows = parse_payload(raw)
-            for r in rows:
-                r["city"] = venues[vcode].get("City", "Unknown")
-                r["state"] = venues[vcode].get("State", "Unknown")
-                r["source"] = "BMS"
-                r["date"] = DATE_CODE
-            fetched.extend(rows)
+
+            # 🔐 APPLY CUTOFF ONLY HERE
+            for r in parse_payload(raw):
+                if minutes_left(r["time"]) <= CUTOFF_MINUTES:
+                    r["city"]   = venues[vcode].get("City", "Unknown")
+                    r["state"]  = venues[vcode].get("State", "Unknown")
+                    r["source"] = "BMS"
+                    r["date"]   = DATE_CODE
+                    fetched.append(r)
+
         except Exception as e:
             reset_identity()
             log(f"❌ {vcode} | {type(e).__name__}")
+
         time.sleep(random.uniform(0.35, 0.7))
 
     # =====================================================
@@ -233,7 +259,7 @@ if __name__ == "__main__":
         else:
             new_map[key] = r
 
-    # keep disappeared shows
+    # 🧠 keep disappeared shows forever
     for key, r in old_map.items():
         if key not in new_map:
             new_map[key] = r
@@ -241,16 +267,14 @@ if __name__ == "__main__":
     detailed = list(new_map.values())
 
     # =====================================================
-    # SUMMARY (REBUILT EVERY RUN)
+    # SUMMARY (REBUILT FROM DETAILED)
     # =====================================================
     summary = {}
 
     for r in detailed:
         movie = r["movie"]
         city  = r["city"]
-        state = r["state"]
         venue = r["venue"]
-        chain = r["chain"]
 
         total = r["totalSeats"]
         sold  = r["sold"]
