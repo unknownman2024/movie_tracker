@@ -5,18 +5,19 @@ import time
 import threading
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import cloudscraper
+import requests
 
 # =====================================================
 # CONFIG
 # =====================================================
 SHARD_ID = 1
-API_TIMEOUT = 10
 
-MAX_RECOVERY_ROUNDS = 10
-MAX_WORKERS = 4   # ⚠️ SAFE LIMIT (do not increase blindly)
+API_TIMEOUT = 8          # hard timeout
+MAX_RECOVERY_ROUNDS = 6  # more than enough
+MAX_WORKERS = 3          # CF safe
 
 IST = timezone(timedelta(hours=5, minutes=30))
 DATE_CODE = (datetime.now(IST) + timedelta(days=1)).strftime("%Y%m%d")
@@ -51,56 +52,66 @@ empty_venues = set()
 # =====================================================
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/119 Safari/537.36",
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/118 Safari/537.36",
 ]
 
 def headers():
-    ip = ".".join(str(random.randint(10, 240)) for _ in range(4))
     return {
         "User-Agent": random.choice(USER_AGENTS),
         "Accept": "application/json, text/plain, */*",
         "Origin": "https://in.bookmyshow.com",
         "Referer": "https://in.bookmyshow.com/",
-        "X-Forwarded-For": ip,
     }
 
 # =====================================================
-# CLOUDSCRAPER (THREAD LOCAL)
+# CLOUDSCRAPER (SAFE)
 # =====================================================
 def get_scraper():
     if hasattr(thread_local, "scraper"):
         return thread_local.scraper
 
     log("🧠 Creating cloudscraper session")
+
     s = cloudscraper.create_scraper(
         browser={"browser": "chrome", "platform": "windows", "desktop": True}
     )
+
+    # 🔥 warm-up to avoid hang
+    try:
+        s.get("https://in.bookmyshow.com", timeout=5)
+    except Exception:
+        pass
+
     thread_local.scraper = s
     return s
 
 def reset_identity():
     if hasattr(thread_local, "scraper"):
         del thread_local.scraper
-    log("🔄 Identity reset")
 
 # =====================================================
-# THREAD INITIALIZER (CRITICAL FIX)
+# API FETCH (NEVER HANGS)
 # =====================================================
-def init_thread():
-    reset_identity()
-
-# =====================================================
-# API FETCH
-# =====================================================
-def fetch_api_raw(venue_code):
+def fetch_api_raw(vcode):
     url = (
         "https://in.bookmyshow.com/api/v2/mobile/showtimes/byvenue"
-        f"?venueCode={venue_code}&dateCode={DATE_CODE}"
+        f"?venueCode={vcode}&dateCode={DATE_CODE}"
     )
-    r = get_scraper().get(url, headers=headers(), timeout=API_TIMEOUT)
+
+    log(f"🌐 API CALL {vcode}")
+
+    r = get_scraper().get(
+        url,
+        headers=headers(),
+        timeout=API_TIMEOUT
+    )
+
+    if r.status_code != 200:
+        raise RuntimeError(f"HTTP {r.status_code}")
+
     if not r.text.strip().startswith("{"):
-        raise RuntimeError("Non-JSON response")
+        raise RuntimeError("Non-JSON")
+
     return r.json()
 
 # =====================================================
@@ -111,12 +122,11 @@ def parse_payload(data):
     if not sd:
         return {}
 
-    venue_info = sd[0].get("Venues", {})
-    venue_name = venue_info.get("VenueName", "")
-    venue_add  = venue_info.get("VenueAdd", "")
+    venue = sd[0].get("Venues", {})
+    venue_name = venue.get("VenueName", "")
+    venue_add  = venue.get("VenueAdd", "")
 
     out = defaultdict(list)
-    shows = 0
 
     for ev in sd[0].get("Event", []):
         title = ev.get("EventTitle", "Unknown")
@@ -128,46 +138,40 @@ def parse_payload(data):
             movie = f"{title} [{suffix}]" if suffix else title
 
             for sh in ch.get("ShowTimes", []):
-                show_date = sh.get("ShowDateCode") or (sh.get("ShowDateTime", "")[:8])
-                if show_date != DATE_CODE:
+                if (sh.get("ShowDateCode") or "") != DATE_CODE:
                     continue
 
-                total = sold = avail = gross = 0
+                total = sold = gross = 0
                 for cat in sh.get("Categories", []):
                     seats = int(cat.get("MaxSeats", 0))
                     free  = int(cat.get("SeatsAvail", 0))
                     price = float(cat.get("CurPrice", 0))
                     total += seats
-                    avail += free
                     sold  += seats - free
                     gross += (seats - free) * price
 
-                shows += 1
                 out[movie].append({
                     "venue": venue_name,
                     "address": venue_add,
                     "time": sh.get("ShowTime"),
-                    "total": total,
-                    "available": avail,
                     "sold": sold,
+                    "total": total,
                     "gross": round(gross, 2),
                 })
 
-    return out if shows else {}
+    return out
 
 # =====================================================
-# RECOVERY WORKER (NO RESET HERE!)
+# RECOVERY WORKER (PARALLEL SAFE)
 # =====================================================
 def recovery_worker(vcode):
     try:
-        time.sleep(random.uniform(0.3, 0.8))
-        raw = fetch_api_raw(vcode)
-        data = parse_payload(raw)
+        time.sleep(random.uniform(0.4, 0.9))
+        data = parse_payload(fetch_api_raw(vcode))
         if data:
             return vcode, data
     except Exception:
         pass
-
     return vcode, None
 
 # =====================================================
@@ -181,21 +185,23 @@ if __name__ == "__main__":
 
     log(f"🎯 Venues loaded: {len(venues)}")
 
-    # ---------------- PASS 1 ----------------
-    log("▶ PASS-1 : API fetch")
-    for vcode in venues.keys():
+    # ================= PASS-1 =================
+    log("▶ PASS-1 : SERIAL FETCH")
+    for i, vcode in enumerate(venues.keys(), 1):
+        log(f"[P1 {i}/{len(venues)}] {vcode}")
         try:
             data = parse_payload(fetch_api_raw(vcode))
             if data:
                 all_data[vcode] = data
             else:
                 empty_venues.add(vcode)
-        except Exception:
+        except Exception as e:
             empty_venues.add(vcode)
+            log(f"❌ {vcode} | {e}")
 
-    # ---------------- PASS 2 ----------------
+    # ================= PASS-2 =================
+    log(f"▶ PASS-2 : SERIAL RETRY ({len(empty_venues)})")
     reset_identity()
-    log(f"▶ PASS-2 : API retry ({len(empty_venues)})")
 
     for vcode in list(empty_venues):
         try:
@@ -206,40 +212,31 @@ if __name__ == "__main__":
         except Exception:
             pass
 
-    # ---------------- PARALLEL RECOVERY ----------------
-    for round_no in range(1, MAX_RECOVERY_ROUNDS + 1):
+    # ================= PASS-3+ =================
+    for rnd in range(1, MAX_RECOVERY_ROUNDS + 1):
         if not empty_venues:
             break
 
-        log(f"🔁 PARALLEL RECOVERY ROUND {round_no} | Pending: {len(empty_venues)}")
+        log(f"🔁 PARALLEL ROUND {rnd} | Pending {len(empty_venues)}")
+        reset_identity()
         recovered = 0
 
-        with ThreadPoolExecutor(
-            max_workers=MAX_WORKERS,
-            initializer=init_thread
-        ) as executor:
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as exe:
+            futures = [exe.submit(recovery_worker, v) for v in list(empty_venues)]
 
-            futures = [
-                executor.submit(recovery_worker, vcode)
-                for vcode in list(empty_venues)
-            ]
+            for fut in as_completed(futures, timeout=40):
+                vcode, data = fut.result()
+                if data:
+                    all_data[vcode] = data
+                    empty_venues.remove(vcode)
+                    recovered += 1
+                    log(f"🛠️ RECOVERED {vcode}")
 
-            try:
-                for future in as_completed(futures, timeout=60):
-                    vcode, data = future.result(timeout=API_TIMEOUT + 2)
-                    if data:
-                        all_data[vcode] = data
-                        empty_venues.remove(vcode)
-                        recovered += 1
-                        log(f"🛠️ RECOVERED {vcode}")
-            except TimeoutError:
-                log("⏱️ ROUND TIMEOUT — moving on")
+        log(f"📊 ROUND {rnd} RECOVERED {recovered}")
+        time.sleep(4 if recovered == 0 else 2)
 
-        log(f"📊 ROUND {round_no} RECOVERED: {recovered}")
-        time.sleep(3 if recovered else 6)
-
-    # ---------------- SAVE ----------------
-    log("💾 Writing output files")
+    # ================= SAVE =================
+    log("💾 SAVING FILES")
 
     summary = {}
     detailed = []
@@ -285,4 +282,4 @@ if __name__ == "__main__":
     with open(DETAILED_FILE, "w") as f:
         json.dump(detailed, f, indent=2)
 
-    log(f"✅ DONE — recovered {len(all_data)}/{len(venues)} venues")
+    log(f"✅ DONE — {len(all_data)}/{len(venues)} venues fetched")
