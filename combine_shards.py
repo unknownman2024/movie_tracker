@@ -98,7 +98,7 @@ def dedupe(rows):
 # =====================================================
 all_rows = []
 
-for i in range(1, 9):
+for i in range(1, 10):
     path = os.path.join(BASE_DIR, f"detailed{i}.json")
     data = load_json(path)
     if data:
