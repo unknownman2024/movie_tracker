@@ -1,51 +1,61 @@
-name: BMS Combine Runner
+name: Combine Detailed Shards (Final JSON)
 
 on:
-  workflow_run:
-    workflows:
-      - BMS Shard 1 Scraper
-      - BMS Shard 2 Scraper
-      - BMS Shard 3 Scraper
-      - BMS Shard 4 Scraper
-      - BMS Shard 5 Scraper
-      - BMS Shard 6 Scraper
-      - BMS Shard 7 Scraper
-      - BMS Shard 8 Scraper
-    types:
-      - completed
+  workflow_dispatch:
+  schedule:
+    # Daily at 01:10 IST (19:40 UTC previous day)
+    - cron: "40 19 * * *"
 
 permissions:
-  contents: write
+  contents: write   # REQUIRED to push commits
 
 jobs:
   combine:
-    # run only if ALL shards succeeded
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
-      - name: 🧾 Checkout repo
+      # ---------------- CHECKOUT ----------------
+      - name: 🧾 Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          persist-credentials: true
 
+      # ---------------- PYTHON ----------------
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: 🔗 Combine shard outputs
+      # ---------------- DEPENDENCIES ----------------
+      - name: 📦 Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install pytz
+
+      # ---------------- DEBUG ----------------
+      - name: 📂 List advance directory (debug)
+        run: |
+          ls -R advance || true
+
+      # ---------------- RUN COMBINE ----------------
+      - name: 🔗 Combine shards
+        run: |
           python combine_shards.py
 
-      - name: 💾 Commit final JSONs
+      # ---------------- GIT CONFIG ----------------
+      - name: 🧑‍💻 Configure git
         run: |
           git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          git config user.email "github-actions@github.com"
 
-          git add data/**/final*.json
-          git commit -m "Final combined BMS data ($(date +'%Y-%m-%d'))" || echo "Nothing to commit"
+      # ---------------- COMMIT ----------------
+      - name: 📤 Commit combined JSON
+        run: |
+          git add advance/
+          git commit -m "Auto: Combine detailed shards & generate final summary" || echo "No changes to commit"
 
-          git pull --rebase origin main || true
-          git push origin main || git push --force-with-lease origin main
+      # ---------------- PUSH ----------------
+      - name: 🚀 Push changes
+        run: |
+          git push
