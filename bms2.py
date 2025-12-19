@@ -39,7 +39,7 @@ def log(msg):
         f.write(line + "\n")
 
 # =====================================================
-# HARD TIMEOUT (ANTI-FREEZE)
+# HARD TIMEOUT
 # =====================================================
 class TimeoutError(Exception):
     pass
@@ -60,13 +60,6 @@ def hard_timeout(seconds):
     return deco
 
 # =====================================================
-# STATE
-# =====================================================
-thread_local = threading.local()
-all_data = {}
-retry_venues = set()   # ONLY real failures go here
-
-# =====================================================
 # USER AGENTS
 # =====================================================
 USER_AGENTS = [
@@ -75,9 +68,8 @@ USER_AGENTS = [
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/118 Safari/537.36",
 ]
 
-# =====================================================
-# IDENTITY (STICKY SESSION)
-# =====================================================
+thread_local = threading.local()
+
 class Identity:
     def __init__(self):
         self.ua = random.choice(USER_AGENTS)
@@ -93,25 +85,22 @@ class Identity:
             "Accept-Language": "en-IN,en;q=0.9",
             "Origin": "https://in.bookmyshow.com",
             "Referer": "https://in.bookmyshow.com/",
-            "sec-fetch-site": "same-origin",
-            "sec-fetch-mode": "cors",
-            "sec-ch-ua": '"Chromium";v="120", "Not=A?Brand";v="99"',
             "X-Forwarded-For": self.ip,
         }
 
 def get_identity():
     if not hasattr(thread_local, "identity"):
-        log("🧠 Creating new browser identity")
         thread_local.identity = Identity()
+        log("🧠 New identity created")
     return thread_local.identity
 
 def reset_identity():
     if hasattr(thread_local, "identity"):
         del thread_local.identity
-    log("🔄 Browser identity reset")
+    log("🔄 Identity reset")
 
 # =====================================================
-# API FETCH
+# FETCH API
 # =====================================================
 @hard_timeout(HARD_TIMEOUT)
 def fetch_api_raw(venue_code):
@@ -120,43 +109,25 @@ def fetch_api_raw(venue_code):
         "https://in.bookmyshow.com/api/v2/mobile/showtimes/byvenue"
         f"?venueCode={venue_code}&dateCode={DATE_CODE}"
     )
-
-    r = ident.scraper.get(
-        url,
-        headers=ident.headers(),
-        timeout=API_TIMEOUT
-    )
-
-    txt = r.text.strip()
-    if not txt.startswith("{"):
-        raise RuntimeError("Blocked / HTML response")
-
+    r = ident.scraper.get(url, headers=ident.headers(), timeout=API_TIMEOUT)
+    if not r.text.strip().startswith("{"):
+        raise RuntimeError("Blocked / HTML")
     return r.json()
 
 # =====================================================
-# PARSER — RETURNS (parsed_data, status)
+# PARSER
 # =====================================================
-def parse_payload(data, venue_code):
-    # Case 1: Venue exists but no shows for ANY date
-    if data.get("AllShowDatesDisabled") is True:
-        log(f"⏩ ALL DATES DISABLED {venue_code}")
-        return {}, "ALL_DISABLED"
+def parse_payload(data):
+    out = []
 
     sd = data.get("ShowDetails", [])
     if not sd:
-        return {}, "NO_SHOWS"
+        return out
 
-    api_date = sd[0].get("Date")
-    if api_date and str(api_date) != str(DATE_CODE):
-        log(f"⏩ DATE MISMATCH {venue_code} | API:{api_date} EXPECTED:{DATE_CODE}")
-        return {}, "DATE_MISMATCH"
-
-    venue_info = sd[0].get("Venues", {})
-    venue_name = venue_info.get("VenueName", "")
-    venue_add  = venue_info.get("VenueAdd", "")
-
-    out = defaultdict(list)
-    shows = 0
+    venue = sd[0].get("Venues", {})
+    venue_name = venue.get("VenueName", "")
+    venue_add  = venue.get("VenueAdd", "")
+    chain      = venue.get("VenueCompName", "Unknown")
 
     for ev in sd[0].get("Event", []):
         title = ev.get("EventTitle", "Unknown")
@@ -168,7 +139,7 @@ def parse_payload(data, venue_code):
             movie = f"{title} [{suffix}]" if suffix else title
 
             for sh in ch.get("ShowTimes", []):
-                show_date = sh.get("ShowDateCode") or (sh.get("ShowDateTime", "")[:8])
+                show_date = sh.get("ShowDateCode")
                 if show_date != DATE_CODE:
                     continue
 
@@ -182,21 +153,40 @@ def parse_payload(data, venue_code):
                     sold  += seats - free
                     gross += (seats - free) * price
 
-                shows += 1
-                out[movie].append({
+                out.append({
+                    "movie": movie,
                     "venue": venue_name,
                     "address": venue_add,
-                    "time": sh.get("ShowTime"),
-                    "total": total,
+                    "chain": chain,
+                    "time": sh.get("ShowTime", ""),
+                    "audi": sh.get("Attributes", "") or "",
+                    "session_id": str(sh.get("SessionId", "")),
+                    "totalSeats": total,
                     "available": avail,
                     "sold": sold,
-                    "gross": round(gross, 2),
+                    "gross": round(gross, 2)
                 })
 
-    if shows:
-        return out, "OK"
+    return out
 
-    return {}, "NO_SHOWS"
+# =====================================================
+# DEDUPE
+# =====================================================
+def dedupe(rows):
+    seen = set()
+    out = []
+    for r in rows:
+        key = (
+            r["venue"],
+            r["time"],
+            r["session_id"],
+            r["audi"]
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(r)
+    return out
 
 # =====================================================
 # MAIN
@@ -207,131 +197,168 @@ if __name__ == "__main__":
     with open(f"venues{SHARD_ID}.json", "r", encoding="utf-8") as f:
         venues = json.load(f)
 
-    venue_codes = list(venues.keys())
-    log(f"🎯 Venues loaded: {len(venue_codes)}")
+    all_rows = []
+    retry = set()
 
-    # ---------------- PASS-1 ----------------
-    log("▶ PASS-1 : Primary fetch")
-    random.shuffle(venue_codes)
-
-    for i, vcode in enumerate(venue_codes, 1):
-        log(f"[P1 {i}/{len(venue_codes)}] {vcode}")
+    for i, vcode in enumerate(venues, 1):
+        log(f"[{i}/{len(venues)}] {vcode}")
         try:
             raw = fetch_api_raw(vcode)
-            parsed, status = parse_payload(raw, vcode)
-
-            if status == "OK":
-                all_data[vcode] = parsed
-                log(f"✅ FETCHED {vcode}")
-
-            elif status in ("DATE_MISMATCH", "ALL_DISABLED", "NO_SHOWS"):
-                log(f"✅ FETCHED ({status}) {vcode}")
-
-            else:
-                retry_venues.add(vcode)
-                log(f"❌ FAILED {vcode}")
-
+            rows = parse_payload(raw)
+            for r in rows:
+                r["city"] = venues[vcode].get("City", "Unknown")
+                r["state"] = venues[vcode].get("State", "Unknown")
+                r["source"] = "BMS"
+                r["date"] = DATE_CODE
+            all_rows.extend(rows)
         except Exception as e:
-            retry_venues.add(vcode)
-            log(f"❌ ERROR {vcode} | {type(e).__name__}")
+            retry.add(vcode)
             reset_identity()
+            log(f"❌ {vcode} | {type(e).__name__}")
+        time.sleep(random.uniform(0.35, 0.7))
 
-        time.sleep(random.uniform(0.35, 0.75))
+    log("🧹 Deduping shows")
+    detailed = dedupe(all_rows)
 
-    # ---------------- PASS-2 ----------------
-    log(f"▶ PASS-2 : Soft retry ({len(retry_venues)})")
-
-    for vcode in list(retry_venues):
-        try:
-            raw = fetch_api_raw(vcode)
-            parsed, status = parse_payload(raw, vcode)
-
-            if status == "OK":
-                all_data[vcode] = parsed
-                retry_venues.remove(vcode)
-                log(f"♻️ RECOVERED {vcode}")
-
-            elif status in ("DATE_MISMATCH", "ALL_DISABLED", "NO_SHOWS"):
-                retry_venues.remove(vcode)
-                log(f"✅ FETCHED ({status}) {vcode}")
-
-        except Exception:
-            time.sleep(random.uniform(0.8, 1.2))
-
-    # ---------------- RECOVERY ----------------
-    for round_no in range(1, MAX_RECOVERY_ROUNDS + 1):
-        if not retry_venues:
-            break
-
-        log(f"🔁 RECOVERY ROUND {round_no} ({len(retry_venues)})")
-        reset_identity()
-
-        retry = list(retry_venues)
-        random.shuffle(retry)
-        time.sleep(min(2 + round_no * 0.8, 6))
-
-        for vcode in retry:
-            log(f"🔎 RETRY {vcode}")
-            try:
-                raw = fetch_api_raw(vcode)
-                parsed, status = parse_payload(raw, vcode)
-
-                if status == "OK":
-                    all_data[vcode] = parsed
-                    retry_venues.remove(vcode)
-                    log(f"🛠️ RECOVERED {vcode}")
-
-                elif status in ("DATE_MISMATCH", "ALL_DISABLED", "NO_SHOWS"):
-                    retry_venues.remove(vcode)
-                    log(f"✅ FETCHED ({status}) {vcode}")
-
-            except Exception as e:
-                log(f"⏰ FAIL {vcode} | {type(e).__name__}")
-                reset_identity()
-                time.sleep(random.uniform(1.2, 2.0))
-
-    # ---------------- SAVE ----------------
-    log("💾 Writing output")
-
+    # =====================================================
+    # SUMMARY (AFTER DEDUPE)
+    # =====================================================
     summary = {}
-    detailed = []
 
-    for vcode, movies in all_data.items():
-        for movie, shows in movies.items():
-            m = summary.setdefault(movie, {
-                "shows": 0, "gross": 0, "sold": 0, "totalSeats": 0, "venues": set()
+    for r in detailed:
+        movie = r["movie"]
+        city  = r["city"]
+        state = r["state"]
+        venue = r["venue"]
+        chain = r["chain"]
+
+        total = r["totalSeats"]
+        sold  = r["sold"]
+        gross = r["gross"]
+        occ   = (sold / total * 100) if total else 0
+
+        if movie not in summary:
+            summary[movie] = {
+                "shows": 0,
+                "gross": 0.0,
+                "sold": 0,
+                "totalSeats": 0,
+                "venues": set(),
+                "cities": set(),
+                "fastfilling": 0,
+                "housefull": 0,
+                "details": {},
+                "Chain_details": {}
+            }
+
+        m = summary[movie]
+        m["shows"] += 1
+        m["gross"] += gross
+        m["sold"] += sold
+        m["totalSeats"] += total
+        m["venues"].add(venue)
+        m["cities"].add(city)
+
+        if occ >= 98:
+            m["housefull"] += 1
+        elif occ >= 50:
+            m["fastfilling"] += 1
+
+        ck = (city, state)
+        if ck not in m["details"]:
+            m["details"][ck] = {
+                "city": city, "state": state,
+                "venues": set(),
+                "shows": 0, "gross": 0.0,
+                "sold": 0, "totalSeats": 0,
+                "fastfilling": 0, "housefull": 0
+            }
+
+        d = m["details"][ck]
+        d["venues"].add(venue)
+        d["shows"] += 1
+        d["gross"] += gross
+        d["sold"] += sold
+        d["totalSeats"] += total
+        if occ >= 98:
+            d["housefull"] += 1
+        elif occ >= 50:
+            d["fastfilling"] += 1
+
+        if chain not in m["Chain_details"]:
+            m["Chain_details"][chain] = {
+                "chain": chain,
+                "venues": set(),
+                "shows": 0, "gross": 0.0,
+                "sold": 0, "totalSeats": 0,
+                "fastfilling": 0, "housefull": 0
+            }
+
+        c = m["Chain_details"][chain]
+        c["venues"].add(venue)
+        c["shows"] += 1
+        c["gross"] += gross
+        c["sold"] += sold
+        c["totalSeats"] += total
+        if occ >= 98:
+            c["housefull"] += 1
+        elif occ >= 50:
+            c["fastfilling"] += 1
+
+    # =====================================================
+    # FINALIZE SUMMARY
+    # =====================================================
+    final_summary = {}
+
+    for movie, m in summary.items():
+        final_summary[movie] = {
+            "shows": m["shows"],
+            "gross": round(m["gross"], 2),
+            "sold": m["sold"],
+            "totalSeats": m["totalSeats"],
+            "venues": len(m["venues"]),
+            "cities": len(m["cities"]),
+            "fastfilling": m["fastfilling"],
+            "housefull": m["housefull"],
+            "occupancy": round((m["sold"] / m["totalSeats"]) * 100, 2) if m["totalSeats"] else 0.0,
+            "details": [],
+            "Chain_details": []
+        }
+
+        for d in m["details"].values():
+            final_summary[movie]["details"].append({
+                "city": d["city"],
+                "state": d["state"],
+                "venues": len(d["venues"]),
+                "shows": d["shows"],
+                "gross": round(d["gross"], 2),
+                "sold": d["sold"],
+                "totalSeats": d["totalSeats"],
+                "fastfilling": d["fastfilling"],
+                "housefull": d["housefull"],
+                "occupancy": round((d["sold"] / d["totalSeats"]) * 100, 2) if d["totalSeats"] else 0.0
             })
-            m["venues"].add(vcode)
-            for s in shows:
-                m["shows"] += 1
-                m["gross"] += s["gross"]
-                m["sold"] += s["sold"]
-                m["totalSeats"] += s["total"]
 
-                detailed.append({
-                    "movie": movie,
-                    "venue": s["venue"],
-                    "time": s["time"],
-                    "sold": s["sold"],
-                    "total": s["total"],
-                    "gross": s["gross"],
-                    "date": DATE_CODE
-                })
+        for c in m["Chain_details"].values():
+            final_summary[movie]["Chain_details"].append({
+                "chain": c["chain"],
+                "venues": len(c["venues"]),
+                "shows": c["shows"],
+                "gross": round(c["gross"], 2),
+                "sold": c["sold"],
+                "totalSeats": c["totalSeats"],
+                "fastfilling": c["fastfilling"],
+                "housefull": c["housefull"],
+                "occupancy": round((c["sold"] / c["totalSeats"]) * 100, 2) if c["totalSeats"] else 0.0
+            })
 
-    final_summary = {
-        k: {
-            "shows": v["shows"],
-            "gross": round(v["gross"], 2),
-            "sold": v["sold"],
-            "totalSeats": v["totalSeats"],
-            "venues": len(v["venues"])
-        } for k, v in summary.items()
-    }
+    # =====================================================
+    # SAVE FILES
+    # =====================================================
+    with open(DETAILED_FILE, "w", encoding="utf-8") as f:
+        json.dump(detailed, f, indent=2, ensure_ascii=False)
 
     with open(SUMMARY_FILE, "w", encoding="utf-8") as f:
-        json.dump(final_summary, f, indent=2)
+        json.dump(final_summary, f, indent=2, ensure_ascii=False)
 
-    with open(DETAILED_FILE, "w", encoding="utf-8") as f:
-        json.dump(detailed, f, indent=2)
-
-    log(f"✅ DONE — fetched {len(venue_codes) - len(retry_venues)}/{len(venue_codes)} venues")
+    log(f"✅ DONE | Shows={len(detailed)} | Movies={len(final_summary)}")
