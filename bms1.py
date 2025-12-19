@@ -1,15 +1,14 @@
 import json
 import os
-import sys
-import threading
 import random
 import time
+import threading
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 import cloudscraper
 
-# ---------- Selenium (LAZY LOAD) ----------
+# -------- Selenium (lazy, only PASS-3) --------
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -34,7 +33,7 @@ DETAILED_FILE = f"{BASE_DIR}/detailed{SHARD_ID}.json"
 LOG_FILE      = f"{LOG_DIR}/bms{SHARD_ID}.log"
 
 # =====================================================
-# LOGGING (CRITICAL)
+# LOGGING
 # =====================================================
 def log(msg):
     ts = datetime.now(IST).strftime("%H:%M:%S")
@@ -44,7 +43,7 @@ def log(msg):
         f.write(line + "\n")
 
 # =====================================================
-# THREAD / STATE
+# STATE
 # =====================================================
 thread_local = threading.local()
 all_data = {}
@@ -70,7 +69,7 @@ def headers():
     }
 
 # =====================================================
-# SCRAPER
+# CLOUDSCRAPER
 # =====================================================
 def get_scraper():
     if hasattr(thread_local, "scraper"):
@@ -108,7 +107,7 @@ def fetch_api_raw(venue_code):
     return r.json()
 
 # =====================================================
-# PARSE
+# PARSER
 # =====================================================
 def parse_payload(data, venue_code):
     sd = data.get("ShowDetails", [])
@@ -162,7 +161,7 @@ def parse_payload(data, venue_code):
     return out if shows else {}
 
 # =====================================================
-# SELENIUM (LAZY + GUARDED)
+# SELENIUM (PASS-3 ONLY)
 # =====================================================
 def get_driver():
     if hasattr(thread_local, "driver"):
@@ -203,14 +202,16 @@ if __name__ == "__main__":
     with open("venues1.json", "r") as f:
         venues = json.load(f)
 
-    log(f"🎯 Total venues loaded: {len(venues)}")
+    log(f"🎯 Venues loaded: {len(venues)}")
 
     # ---------------- PASS 1 ----------------
     log("▶ PASS-1 : API fetch")
     for i, vcode in enumerate(venues.keys(), start=1):
         log(f"[P1 {i}/{len(venues)}] {vcode}")
         try:
-            data = parse_payload(fetch_api_raw(vcode), vcode)
+            raw = fetch_api_raw(vcode)
+            log(f"🌐 API response received for {vcode}")
+            data = parse_payload(raw, vcode)
             if data:
                 all_data[vcode] = data
                 log(f"✅ FETCHED {vcode}")
@@ -222,36 +223,39 @@ if __name__ == "__main__":
             log(f"❌ ERROR {vcode} | {e}")
 
     # ---------------- PASS 2 ----------------
+    log("🔄 Reset identity ONCE before PASS-2")
+    reset_identity()
+
     log(f"▶ PASS-2 : API retry ({len(empty_venues)})")
-    for vcode in list(empty_venues):
-        time.sleep(random.uniform(1.0, 2.0))
-        reset_identity()
+    for i, vcode in enumerate(list(empty_venues), start=1):
+        log(f"[P2 {i}/{len(empty_venues)}] {vcode}")
         try:
-            data = parse_payload(fetch_api_raw(vcode), vcode)
+            raw = fetch_api_raw(vcode)
+            log(f"🌐 API response received for {vcode}")
+            data = parse_payload(raw, vcode)
             if data:
                 all_data[vcode] = data
                 empty_venues.remove(vcode)
                 log(f"♻️ RECOVERED {vcode}")
-        except Exception:
-            pass
+        except Exception as e:
+            log(f"❌ PASS-2 ERROR {vcode} | {e}")
 
     # ---------------- PASS 3 ----------------
     log(f"▶ PASS-3 : Selenium verify ({len(empty_venues)})")
-    for vcode in list(empty_venues):
-        time.sleep(random.uniform(2.0, 3.0))
-        reset_identity()
+    for i, vcode in enumerate(list(empty_venues), start=1):
+        log(f"[P3 {i}/{len(empty_venues)}] {vcode}")
         try:
             raw = fetch_via_selenium(vcode)
-            parsed = parse_payload(raw, vcode)
-            if parsed:
-                all_data[vcode] = parsed
+            data = parse_payload(raw, vcode)
+            if data:
+                all_data[vcode] = data
                 empty_venues.remove(vcode)
                 log(f"🧠 SELENIUM RECOVERED {vcode}")
         except Exception as e:
-            log(f"❌ SEL FAIL {vcode} | {e}")
+            log(f"❌ SEL ERROR {vcode} | {e}")
 
     # ---------------- SAVE ----------------
-    log("💾 Writing output")
+    log("💾 Writing output files")
 
     summary = {}
     detailed = []
