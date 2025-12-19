@@ -2,50 +2,269 @@ import json
 import os
 from datetime import datetime, timedelta
 import pytz
+from collections import defaultdict
 
-# ---------------- IST DATE + 1 ----------------
+# =====================================================
+# DATE (IST + 1)
+# =====================================================
 IST = pytz.timezone("Asia/Kolkata")
-date_ist_plus_1 = (datetime.now(IST) + timedelta(days=1)).strftime("%Y%m%d")
+NOW_IST = datetime.now(IST)
+DATE_CODE = (NOW_IST + timedelta(days=1)).strftime("%Y%m%d")
+LAST_UPDATED = NOW_IST.strftime("%Y-%m-%d %H:%M IST")
 
-BASE_DIR = f"advance/data/{date_ist_plus_1}"
-OUTPUT_FILE = os.path.join(BASE_DIR, "finaldetailed.json")
+BASE_DIR = f"advance/data/{DATE_CODE}"
+FINAL_DETAILED = os.path.join(BASE_DIR, "finaldetailed.json")
+FINAL_SUMMARY  = os.path.join(BASE_DIR, "finalsummary.json")
 
 print(f"📁 Using directory: {BASE_DIR}")
+print(f"⏱ Last updated: {LAST_UPDATED}")
 
-# ---------------- HELPERS ----------------
+# =====================================================
+# HELPERS
+# =====================================================
 def load_json(path):
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        print(f"⚠️ Missing: {path}")
+            data = json.load(f)
+            return data if isinstance(data, list) else []
+    except Exception:
         return []
-    except json.JSONDecodeError:
-        print(f"❌ Invalid JSON: {path}")
-        return []
-
 
 def save_json(path, data):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
+# =====================================================
+# DEDUPE
+# =====================================================
+def dedupe(rows):
+    seen = set()
+    out = []
+    dupes = 0
 
-# ---------------- COMBINE DETAILED LISTS ----------------
-final_detailed = []
+    for r in rows:
+        key = (
+            r.get("venue", "").strip(),
+            r.get("time", "").strip(),
+            str(r.get("session_id", "")).strip(),
+            r.get("audi", "").strip(),
+        )
+        if key in seen:
+            dupes += 1
+            continue
+        seen.add(key)
+
+        occ = r.get("occupancy", "")
+        if isinstance(occ, (int, float)):
+            r["occupancy"] = f"{round(float(occ), 2)}%"
+        elif isinstance(occ, str) and not occ.endswith("%"):
+            try:
+                r["occupancy"] = f"{round(float(occ), 2)}%"
+            except:
+                r["occupancy"] = "0%"
+
+        out.append(r)
+
+    return out, dupes
+
+# =====================================================
+# LOAD + COMBINE SHARDS
+# =====================================================
+all_rows = []
 
 for i in range(1, 9):
-    file_path = os.path.join(BASE_DIR, f"detailed{i}.json")
-    data = load_json(file_path)
+    path = os.path.join(BASE_DIR, f"detailed{i}.json")
+    data = load_json(path)
+    if data:
+        all_rows.extend(data)
+        print(f"✅ detailed{i}.json → {len(data)} rows")
 
-    if isinstance(data, list):
-        final_detailed.extend(data)
-        print(f"✅ Added {len(data)} records from detailed{i}.json")
-    else:
-        print(f"⚠️ Skipped detailed{i}.json (not a list)")
+print(f"📊 Raw rows: {len(all_rows)}")
 
-print(f"🎯 Total combined records: {len(final_detailed)}")
+# =====================================================
+# DEDUPE FINAL
+# =====================================================
+final_rows, dupes = dedupe(all_rows)
+print(f"🧹 Duplicates removed: {dupes}")
+print(f"🎯 Final detailed rows: {len(final_rows)}")
 
-save_json(OUTPUT_FILE, final_detailed)
+# =====================================================
+# SORT FINAL DETAILED
+# =====================================================
+final_rows.sort(
+    key=lambda x: (
+        x.get("movie", ""),
+        x.get("city", ""),
+        x.get("venue", ""),
+        x.get("time", ""),
+    )
+)
 
-print(f"🎉 finaldetailed.json created successfully")
+# =====================================================
+# SAVE finaldetailed.json (WITH last_updated)
+# =====================================================
+save_json(
+    FINAL_DETAILED,
+    {
+        "last_updated": LAST_UPDATED,
+        "data": final_rows
+    }
+)
+
+print("🎉 finaldetailed.json saved")
+
+# =====================================================
+# BUILD FINAL SUMMARY
+# =====================================================
+summary = {}
+
+for r in final_rows:
+    movie = r["movie"]
+    city = r["city"]
+    state = r["state"]
+    venue = r["venue"]
+    chain = r.get("chain", "Unknown")
+
+    total = int(r.get("totalSeats", 0))
+    sold = int(r.get("sold", 0))
+    gross = float(r.get("gross", 0))
+    occ = (sold / total * 100) if total else 0
+
+    if movie not in summary:
+        summary[movie] = {
+            "shows": 0,
+            "gross": 0.0,
+            "sold": 0,
+            "totalSeats": 0,
+            "venues": set(),
+            "cities": set(),
+            "fastfilling": 0,
+            "housefull": 0,
+            "details": {},
+            "Chain_details": {}
+        }
+
+    m = summary[movie]
+    m["shows"] += 1
+    m["gross"] += gross
+    m["sold"] += sold
+    m["totalSeats"] += total
+    m["venues"].add(venue)
+    m["cities"].add(city)
+
+    if occ >= 98:
+        m["housefull"] += 1
+    elif occ >= 50:
+        m["fastfilling"] += 1
+
+    ck = (city, state)
+    if ck not in m["details"]:
+        m["details"][ck] = {
+            "city": city,
+            "state": state,
+            "venues": set(),
+            "shows": 0,
+            "gross": 0.0,
+            "sold": 0,
+            "totalSeats": 0,
+            "fastfilling": 0,
+            "housefull": 0
+        }
+
+    d = m["details"][ck]
+    d["venues"].add(venue)
+    d["shows"] += 1
+    d["gross"] += gross
+    d["sold"] += sold
+    d["totalSeats"] += total
+    if occ >= 98:
+        d["housefull"] += 1
+    elif occ >= 50:
+        d["fastfilling"] += 1
+
+    if chain not in m["Chain_details"]:
+        m["Chain_details"][chain] = {
+            "chain": chain,
+            "venues": set(),
+            "shows": 0,
+            "gross": 0.0,
+            "sold": 0,
+            "totalSeats": 0,
+            "fastfilling": 0,
+            "housefull": 0
+        }
+
+    c = m["Chain_details"][chain]
+    c["venues"].add(venue)
+    c["shows"] += 1
+    c["gross"] += gross
+    c["sold"] += sold
+    c["totalSeats"] += total
+    if occ >= 98:
+        c["housefull"] += 1
+    elif occ >= 50:
+        c["fastfilling"] += 1
+
+# =====================================================
+# FINALIZE SUMMARY
+# =====================================================
+final_summary = {}
+
+for movie, m in summary.items():
+    final_summary[movie] = {
+        "shows": m["shows"],
+        "gross": round(m["gross"], 2),
+        "sold": m["sold"],
+        "totalSeats": m["totalSeats"],
+        "venues": len(m["venues"]),
+        "cities": len(m["cities"]),
+        "fastfilling": m["fastfilling"],
+        "housefull": m["housefull"],
+        "occupancy": round((m["sold"] / m["totalSeats"]) * 100, 2) if m["totalSeats"] else 0.0,
+        "details": [],
+        "Chain_details": []
+    }
+
+    for d in m["details"].values():
+        final_summary[movie]["details"].append({
+            "city": d["city"],
+            "state": d["state"],
+            "venues": len(d["venues"]),
+            "shows": d["shows"],
+            "gross": round(d["gross"], 2),
+            "sold": d["sold"],
+            "totalSeats": d["totalSeats"],
+            "fastfilling": d["fastfilling"],
+            "housefull": d["housefull"],
+            "occupancy": round((d["sold"] / d["totalSeats"]) * 100, 2) if d["totalSeats"] else 0.0
+        })
+
+    for c in m["Chain_details"].values():
+        final_summary[movie]["Chain_details"].append({
+            "chain": c["chain"],
+            "venues": len(c["venues"]),
+            "shows": c["shows"],
+            "gross": round(c["gross"], 2),
+            "sold": c["sold"],
+            "totalSeats": c["totalSeats"],
+            "fastfilling": c["fastfilling"],
+            "housefull": c["housefull"],
+            "occupancy": round((c["sold"] / c["totalSeats"]) * 100, 2) if c["totalSeats"] else 0.0
+        })
+
+# =====================================================
+# SAVE finalsummary.json (WITH last_updated)
+# =====================================================
+save_json(
+    FINAL_SUMMARY,
+    {
+        "last_updated": LAST_UPDATED,
+        "movies": final_summary
+    }
+)
+
+print("🎉 finalsummary.json created successfully")
+print("📄 Files ready:")
+print(f"   • {FINAL_DETAILED}")
+print(f"   • {FINAL_SUMMARY}")
