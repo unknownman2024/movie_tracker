@@ -1,4 +1,4 @@
-name: BMS Shards 1–8 + Combine (Matrix)
+name: BMS Shards 1–9 + Combine (Matrix)
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     steps:
       # ---------------- CHECKOUT ----------------
