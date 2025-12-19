@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 import cloudscraper
 
-# -------- Selenium fallback --------
+# -------- Selenium fallback (kept, but not aggressive) --------
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -19,9 +19,9 @@ from webdriver_manager.chrome import ChromeDriverManager
 # =====================================================
 # CONFIG
 # =====================================================
-NUM_WORKERS = 1
+NUM_WORKERS = 1              # slow = safer
 MAX_ERRORS = 30
-SHARD_ID = 1            # bms1.py → 1
+SHARD_ID = 1
 DUMP_EVERY = 25
 
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -37,6 +37,8 @@ lock = threading.Lock()
 thread_local = threading.local()
 
 all_data = {}
+empty_venues = set()
+
 fetch_count = 0
 error_count = 0
 
@@ -64,7 +66,7 @@ def headers():
     }
 
 # =====================================================
-# SCRAPERS
+# SCRAPER
 # =====================================================
 def get_scraper():
     if hasattr(thread_local, "scraper"):
@@ -75,44 +77,27 @@ def get_scraper():
     thread_local.scraper = s
     return s
 
+def reset_identity():
+    if hasattr(thread_local, "scraper"):
+        del thread_local.scraper
+    if hasattr(thread_local, "driver"):
+        try:
+            thread_local.driver.quit()
+        except Exception:
+            pass
+        del thread_local.driver
+
 def fetch_cloud(url):
     r = get_scraper().get(url, headers=headers(), timeout=15)
     if not r.text.strip().startswith("{"):
         raise ValueError("HTML response")
     return r.json()
 
-def get_driver():
-    if hasattr(thread_local, "driver"):
-        return thread_local.driver
-    o = Options()
-    o.add_argument("--headless=new")
-    o.add_argument("--no-sandbox")
-    o.add_argument("--disable-dev-shm-usage")
-    o.add_argument(f"--user-agent={random.choice(USER_AGENTS)}")
-    d = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()),
-        options=o,
-    )
-    thread_local.driver = d
-    return d
-
-def fetch_selenium(url):
-    d = get_driver()
-    d.set_page_load_timeout(30)
-    d.get(url)
-    body = d.page_source.strip()
-    if not body.startswith("{"):
-        raise ValueError("HTML response")
-    return json.loads(body)
-
 def hybrid_fetch(url):
-    try:
-        return fetch_cloud(url)
-    except Exception:
-        return fetch_selenium(url)
+    return fetch_cloud(url)
 
 # =====================================================
-# FETCH ONE VENUE  (CORRECT DATE LOGIC)
+# FETCH ONE VENUE (CORRECT DATE LOGIC)
 # =====================================================
 def fetch_venue(venue_code):
     url = (
@@ -173,7 +158,7 @@ def fetch_venue(venue_code):
                 })
 
     if valid_shows:
-        print(f"✅ [FETCHED] {venue_code} | DATE={DATE_CODE} | shows={valid_shows}")
+        print(f"✅ [FETCHED] {venue_code} | shows={valid_shows}")
     else:
         print(f"⚠️ [EMPTY] {venue_code} | no shows for DATE={DATE_CODE}")
 
@@ -263,7 +248,7 @@ def dump_memory(venues):
     print(f"💾 Memory dump done at {fetch_count} venues")
 
 # =====================================================
-# THREAD WRAPPER
+# FETCH WRAPPER
 # =====================================================
 def fetch_safe(vcode, venues):
     global fetch_count, error_count
@@ -271,6 +256,8 @@ def fetch_safe(vcode, venues):
         data = fetch_venue(vcode)
         with lock:
             all_data[vcode] = data
+            if not data:
+                empty_venues.add(vcode)
             fetch_count += 1
             if fetch_count % DUMP_EVERY == 0:
                 dump_memory(venues)
@@ -289,12 +276,25 @@ if __name__ == "__main__":
     with open("venues1.json", "r") as f:
         venues = json.load(f)
 
-    print(f"🚀 bms1.py started | workers={NUM_WORKERS}")
+    print("🚀 FIRST PASS STARTED")
 
     with ThreadPoolExecutor(NUM_WORKERS) as exe:
         futures = [exe.submit(fetch_safe, v, venues) for v in venues.keys()]
         for _ in as_completed(futures):
             pass
+
+    print(f"\n🔁 SECOND PASS — retrying {len(empty_venues)} empty venues\n")
+
+    for vcode in list(empty_venues):
+        time.sleep(random.uniform(1.5, 3.0))
+        reset_identity()
+        data = fetch_venue(vcode)
+        if data:
+            all_data[vcode] = data
+            empty_venues.remove(vcode)
+            print(f"✅ [RECOVERED] {vcode}")
+        else:
+            print(f"⚠️ [STILL EMPTY] {vcode}")
 
     dump_memory(venues)
     print("✅ DONE — bms1.py complete")
