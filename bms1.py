@@ -5,6 +5,7 @@ import time
 import threading
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import cloudscraper
 
@@ -13,7 +14,9 @@ import cloudscraper
 # =====================================================
 SHARD_ID = 1
 API_TIMEOUT = 12
+
 MAX_RECOVERY_ROUNDS = 10
+MAX_WORKERS = 5   # ⚠️ keep 4–6 only (CF safe)
 
 IST = timezone(timedelta(hours=5, minutes=30))
 DATE_CODE = (datetime.now(IST) + timedelta(days=1)).strftime("%Y%m%d")
@@ -147,6 +150,24 @@ def parse_payload(data):
     return out if shows else {}
 
 # =====================================================
+# PARALLEL RECOVERY WORKER
+# =====================================================
+def recovery_worker(vcode):
+    try:
+        reset_identity()
+        time.sleep(random.uniform(0.8, 1.6))
+
+        raw = fetch_api_raw(vcode)
+        data = parse_payload(raw)
+
+        if data:
+            return vcode, data
+    except Exception:
+        pass
+
+    return vcode, None
+
+# =====================================================
 # MAIN
 # =====================================================
 if __name__ == "__main__":
@@ -187,24 +208,30 @@ if __name__ == "__main__":
         except Exception:
             pass
 
-    # ---------------- RECOVERY LOOPS ----------------
+    # ---------------- PARALLEL RECOVERY ----------------
     for round_no in range(1, MAX_RECOVERY_ROUNDS + 1):
         if not empty_venues:
             break
 
-        log(f"🔁 RECOVERY ROUND {round_no} ({len(empty_venues)} venues)")
-        reset_identity()
-        time.sleep(random.uniform(1.5, 3.0))
+        log(f"🔁 PARALLEL RECOVERY ROUND {round_no} | Pending: {len(empty_venues)}")
+        recovered_this_round = 0
 
-        for vcode in list(empty_venues):
-            try:
-                data = parse_payload(fetch_api_raw(vcode))
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = {
+                executor.submit(recovery_worker, vcode): vcode
+                for vcode in list(empty_venues)
+            }
+
+            for future in as_completed(futures):
+                vcode, data = future.result()
                 if data:
                     all_data[vcode] = data
                     empty_venues.remove(vcode)
+                    recovered_this_round += 1
                     log(f"🛠️ RECOVERED {vcode}")
-            except Exception:
-                continue
+
+        log(f"📊 ROUND {round_no} RECOVERED: {recovered_this_round}")
+        time.sleep(2.5 if recovered_this_round else 4.5)
 
     # ---------------- SAVE ----------------
     log("💾 Writing output files")
@@ -215,9 +242,14 @@ if __name__ == "__main__":
     for vcode, movies in all_data.items():
         for movie, shows in movies.items():
             m = summary.setdefault(movie, {
-                "shows": 0, "gross": 0, "sold": 0, "totalSeats": 0, "venues": set()
+                "shows": 0,
+                "gross": 0,
+                "sold": 0,
+                "totalSeats": 0,
+                "venues": set()
             })
             m["venues"].add(vcode)
+
             for s in shows:
                 m["shows"] += 1
                 m["gross"] += s["gross"]
@@ -241,7 +273,8 @@ if __name__ == "__main__":
             "sold": v["sold"],
             "totalSeats": v["totalSeats"],
             "venues": len(v["venues"])
-        } for k, v in summary.items()
+        }
+        for k, v in summary.items()
     }
 
     with open(SUMMARY_FILE, "w") as f:
@@ -250,4 +283,4 @@ if __name__ == "__main__":
     with open(DETAILED_FILE, "w") as f:
         json.dump(detailed, f, indent=2)
 
-    log(f"✅ DONE — recovered {(len(venues) - len(empty_venues))}/{len(venues)} venues")
+    log(f"✅ DONE — recovered {len(all_data)}/{len(venues)} venues")
