@@ -1,4 +1,15 @@
 {
+  "Dhurandhar [2D | Hindi]": {
+    "shows": 14,
+    "gross": 134985.0,
+    "sold": 615,
+    "totalSeats": 2611,
+    "venues": 13,
+    "cities": 7,
+    "fastfilling": 3,
+    "housefull": 0,
+    "occupancy": 23.55
+  },
   "Avatar: Fire and Ash [2D | Hindi]": {
     "shows": 1,
     "gross": 0.0,
@@ -10,27 +21,27 @@
     "housefull": 0,
     "occupancy": 0.0
   },
-  "Dhurandhar [2D | Hindi]": {
-    "shows": 5,
-    "gross": 37550.0,
-    "sold": 134,
-    "totalSeats": 1032,
-    "venues": 5,
-    "cities": 4,
-    "fastfilling": 1,
-    "housefull": 0,
-    "occupancy": 12.98
-  },
-  "Avatar: Fire and Ash [3D | English]": {
-    "shows": 1,
-    "gross": 0.0,
-    "sold": 0,
-    "totalSeats": 210,
-    "venues": 1,
-    "cities": 1,
+  "Avatar: Fire and Ash [3D | Hindi]": {
+    "shows": 7,
+    "gross": 49000.0,
+    "sold": 225,
+    "totalSeats": 1314,
+    "venues": 7,
+    "cities": 3,
     "fastfilling": 0,
     "housefull": 0,
-    "occupancy": 0.0
+    "occupancy": 17.12
+  },
+  "Avatar: Fire and Ash [3D | English]": {
+    "shows": 2,
+    "gross": 9040.0,
+    "sold": 28,
+    "totalSeats": 349,
+    "venues": 2,
+    "cities": 2,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 8.02
   },
   "Avatar: Fire and Ash [IMAX 3D | English]": {
     "shows": 1,
@@ -42,5 +53,16 @@
     "fastfilling": 1,
     "housefull": 0,
     "occupancy": 85.16
+  },
+  "Avatar: Fire and Ash [4DX 3D | English]": {
+    "shows": 1,
+    "gross": 67800.0,
+    "sold": 113,
+    "totalSeats": 120,
+    "venues": 1,
+    "cities": 1,
+    "fastfilling": 1,
+    "housefull": 0,
+    "occupancy": 94.17
   }
 }
