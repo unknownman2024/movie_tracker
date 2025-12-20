@@ -1,68 +1,255 @@
 {
-  "Dhurandhar [2D | Hindi]": {
-    "shows": 12,
-    "gross": 63080.0,
-    "sold": 284,
-    "totalSeats": 2302,
-    "venues": 12,
-    "cities": 6,
+  "Avatar: Fire and Ash [3D | Hindi]": {
+    "shows": 36,
+    "gross": 126650.0,
+    "sold": 510,
+    "totalSeats": 6198,
+    "venues": 36,
+    "cities": 13,
     "fastfilling": 1,
     "housefull": 0,
-    "occupancy": 12.34
+    "occupancy": 8.23
+  },
+  "Dhurandhar [2D | Hindi]": {
+    "shows": 129,
+    "gross": 739268.0,
+    "sold": 3040,
+    "totalSeats": 23349,
+    "venues": 102,
+    "cities": 37,
+    "fastfilling": 4,
+    "housefull": 0,
+    "occupancy": 13.02
   },
   "Avatar: Fire and Ash [2D | Hindi]": {
+    "shows": 26,
+    "gross": 65330.0,
+    "sold": 292,
+    "totalSeats": 4262,
+    "venues": 25,
+    "cities": 12,
+    "fastfilling": 1,
+    "housefull": 0,
+    "occupancy": 6.85
+  },
+  "Bha. Bha. Ba. [2D | Malayalam]": {
+    "shows": 4,
+    "gross": 19502.46,
+    "sold": 133,
+    "totalSeats": 793,
+    "venues": 4,
+    "cities": 3,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 16.77
+  },
+  "Avatar: Fire and Ash [3D | English]": {
+    "shows": 21,
+    "gross": 137009.96,
+    "sold": 406,
+    "totalSeats": 3606,
+    "venues": 18,
+    "cities": 15,
+    "fastfilling": 2,
+    "housefull": 0,
+    "occupancy": 11.26
+  },
+  "Kombuseevi [2D | Tamil]": {
+    "shows": 3,
+    "gross": 3455.65,
+    "sold": 35,
+    "totalSeats": 599,
+    "venues": 3,
+    "cities": 1,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 5.84
+  },
+  "Avatar: Fire and Ash [IMAX 3D | English]": {
+    "shows": 2,
+    "gross": 353202.48,
+    "sold": 566,
+    "totalSeats": 631,
+    "venues": 2,
+    "cities": 2,
+    "fastfilling": 1,
+    "housefull": 1,
+    "occupancy": 89.7
+  },
+  "Avatar: Fire and Ash [3D | Tamil]": {
+    "shows": 1,
+    "gross": 8440.35,
+    "sold": 51,
+    "totalSeats": 196,
+    "venues": 1,
+    "cities": 1,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 26.02
+  },
+  "Zootopia 2 [3D | Tamil]": {
+    "shows": 1,
+    "gross": 1312.8,
+    "sold": 6,
+    "totalSeats": 209,
+    "venues": 1,
+    "cities": 1,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 2.87
+  },
+  "Padayappa [2D | Tamil]": {
+    "shows": 1,
+    "gross": 3285.45,
+    "sold": 25,
+    "totalSeats": 170,
+    "venues": 1,
+    "cities": 1,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 14.71
+  },
+  "Tere Ishk Mein [2D | Tamil]": {
+    "shows": 1,
+    "gross": 6070.35,
+    "sold": 45,
+    "totalSeats": 159,
+    "venues": 1,
+    "cities": 1,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 28.3
+  },
+  "Zootopia 2 [3D | Hindi]": {
+    "shows": 3,
+    "gross": 5970.0,
+    "sold": 29,
+    "totalSeats": 479,
+    "venues": 3,
+    "cities": 2,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 6.05
+  },
+  "Tere Ishk Mein [2D | Hindi]": {
+    "shows": 4,
+    "gross": 8750.0,
+    "sold": 50,
+    "totalSeats": 513,
+    "venues": 4,
+    "cities": 2,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 9.75
+  },
+  "Avatar: Fire and Ash [MX4D 3D | Hindi]": {
+    "shows": 1,
+    "gross": 37380.0,
+    "sold": 89,
+    "totalSeats": 135,
+    "venues": 1,
+    "cities": 1,
+    "fastfilling": 1,
+    "housefull": 0,
+    "occupancy": 65.93
+  },
+  "Kis Kisko Pyaar Karoon 2 [2D | Hindi]": {
+    "shows": 11,
+    "gross": 12100.0,
+    "sold": 81,
+    "totalSeats": 944,
+    "venues": 11,
+    "cities": 2,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 8.58
+  },
+  "Me No Pause Me Play [2D | Hindi]": {
     "shows": 1,
     "gross": 0.0,
     "sold": 0,
-    "totalSeats": 160,
+    "totalSeats": 114,
     "venues": 1,
     "cities": 1,
     "fastfilling": 0,
     "housefull": 0,
     "occupancy": 0.0
   },
-  "Avatar: Fire and Ash [3D | English]": {
-    "shows": 7,
-    "gross": 49830.0,
-    "sold": 161,
-    "totalSeats": 1053,
-    "venues": 6,
-    "cities": 6,
-    "fastfilling": 1,
+  "The Devil [2D | Kannada]": {
+    "shows": 1,
+    "gross": 0.0,
+    "sold": 0,
+    "totalSeats": 340,
+    "venues": 1,
+    "cities": 1,
+    "fastfilling": 0,
     "housefull": 0,
-    "occupancy": 15.29
+    "occupancy": 0.0
   },
-  "Avatar: Fire and Ash [3D | Hindi]": {
-    "shows": 5,
-    "gross": 16330.0,
-    "sold": 71,
-    "totalSeats": 892,
-    "venues": 5,
+  "120 Bahadur [2D | Hindi]": {
+    "shows": 1,
+    "gross": 0.0,
+    "sold": 0,
+    "totalSeats": 42,
+    "venues": 1,
+    "cities": 1,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 0.0
+  },
+  "Akhanda 2: Thaandavam [2D | Hindi]": {
+    "shows": 2,
+    "gross": 0.0,
+    "sold": 0,
+    "totalSeats": 391,
+    "venues": 2,
     "cities": 2,
     "fastfilling": 0,
     "housefull": 0,
-    "occupancy": 7.96
-  },
-  "Avatar: Fire and Ash [IMAX 3D | English]": {
-    "shows": 1,
-    "gross": 144000.0,
-    "sold": 192,
-    "totalSeats": 256,
-    "venues": 1,
-    "cities": 1,
-    "fastfilling": 1,
-    "housefull": 0,
-    "occupancy": 75.0
+    "occupancy": 0.0
   },
   "Avatar: Fire and Ash [4DX 3D | English]": {
     "shows": 1,
-    "gross": 25000.0,
-    "sold": 46,
-    "totalSeats": 72,
+    "gross": 51000.0,
+    "sold": 94,
+    "totalSeats": 120,
     "venues": 1,
     "cities": 1,
     "fastfilling": 1,
     "housefull": 0,
-    "occupancy": 63.89
+    "occupancy": 78.33
+  },
+  "Avatar: Fire and Ash [2D | English]": {
+    "shows": 1,
+    "gross": 9080.0,
+    "sold": 32,
+    "totalSeats": 146,
+    "venues": 1,
+    "cities": 1,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 21.92
+  },
+  "Laalo - Krishna Sada Sahaayate [2D | Gujarati]": {
+    "shows": 10,
+    "gross": 7240.0,
+    "sold": 49,
+    "totalSeats": 1433,
+    "venues": 9,
+    "cities": 1,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 3.42
+  },
+  "Durlabh Prasad Ki Dusri Shadi [2D | Hindi]": {
+    "shows": 4,
+    "gross": 4200.0,
+    "sold": 28,
+    "totalSeats": 503,
+    "venues": 4,
+    "cities": 1,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 5.57
   }
 }
