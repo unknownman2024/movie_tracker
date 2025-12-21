@@ -1,13 +1,13 @@
 {
-  "last_updated": "2025-12-22 03:50 IST",
+  "last_updated": "2025-12-22 04:49 IST",
   "movies": {
     "Avatar: Fire and Ash [2D | Hindi]": {
-      "shows": 1,
+      "shows": 2,
       "gross": 0.0,
       "sold": 0,
-      "totalSeats": 121,
-      "venues": 1,
-      "cities": 1,
+      "totalSeats": 281,
+      "venues": 2,
+      "cities": 2,
       "fastfilling": 0,
       "housefull": 0,
       "occupancy": 0.0,
@@ -20,6 +20,18 @@
           "gross": 0.0,
           "sold": 0,
           "totalSeats": 121,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 0.0
+        },
+        {
+          "city": "Bhawanipatna",
+          "state": "Odisha",
+          "venues": 1,
+          "shows": 1,
+          "gross": 0.0,
+          "sold": 0,
+          "totalSeats": 160,
           "fastfilling": 0,
           "housefull": 0,
           "occupancy": 0.0
@@ -36,34 +48,313 @@
           "fastfilling": 0,
           "housefull": 0,
           "occupancy": 0.0
+        },
+        {
+          "chain": "New Star Cineplex: Bhawanipatna",
+          "venues": 1,
+          "shows": 1,
+          "gross": 0.0,
+          "sold": 0,
+          "totalSeats": 160,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 0.0
+        }
+      ]
+    },
+    "Avatar: Fire and Ash [3D | English]": {
+      "shows": 1,
+      "gross": 214400.0,
+      "sold": 536,
+      "totalSeats": 629,
+      "venues": 1,
+      "cities": 1,
+      "fastfilling": 1,
+      "housefull": 0,
+      "occupancy": 85.21,
+      "details": [
+        {
+          "city": "Hyderabad",
+          "state": "Telangana",
+          "venues": 1,
+          "shows": 1,
+          "gross": 214400.0,
+          "sold": 536,
+          "totalSeats": 629,
+          "fastfilling": 1,
+          "housefull": 0,
+          "occupancy": 85.21
+        }
+      ],
+      "Chain_details": [
+        {
+          "chain": "PRASADS",
+          "venues": 1,
+          "shows": 1,
+          "gross": 214400.0,
+          "sold": 536,
+          "totalSeats": 629,
+          "fastfilling": 1,
+          "housefull": 0,
+          "occupancy": 85.21
+        }
+      ]
+    },
+    "Avatar: Fire and Ash [4DX 3D | English]": {
+      "shows": 5,
+      "gross": 150450.0,
+      "sold": 270,
+      "totalSeats": 504,
+      "venues": 5,
+      "cities": 2,
+      "fastfilling": 3,
+      "housefull": 0,
+      "occupancy": 53.57,
+      "details": [
+        {
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "venues": 4,
+          "shows": 4,
+          "gross": 130450.0,
+          "sold": 230,
+          "totalSeats": 396,
+          "fastfilling": 3,
+          "housefull": 0,
+          "occupancy": 58.08
+        },
+        {
+          "city": "Navi Mumbai",
+          "state": "Maharashtra",
+          "venues": 1,
+          "shows": 1,
+          "gross": 20000.0,
+          "sold": 40,
+          "totalSeats": 108,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 37.04
+        }
+      ],
+      "Chain_details": [
+        {
+          "chain": "Cinepolis",
+          "venues": 2,
+          "shows": 2,
+          "gross": 61250.0,
+          "sold": 115,
+          "totalSeats": 204,
+          "fastfilling": 1,
+          "housefull": 0,
+          "occupancy": 56.37
+        },
+        {
+          "chain": "PVR",
+          "venues": 3,
+          "shows": 3,
+          "gross": 89200.0,
+          "sold": 155,
+          "totalSeats": 300,
+          "fastfilling": 2,
+          "housefull": 0,
+          "occupancy": 51.67
+        }
+      ]
+    },
+    "Avatar: Fire and Ash [4DX 3D | Hindi]": {
+      "shows": 1,
+      "gross": 9450.0,
+      "sold": 21,
+      "totalSeats": 68,
+      "venues": 1,
+      "cities": 1,
+      "fastfilling": 0,
+      "housefull": 0,
+      "occupancy": 30.88,
+      "details": [
+        {
+          "city": "Gurugram (Gurgaon)",
+          "state": "NCR",
+          "venues": 1,
+          "shows": 1,
+          "gross": 9450.0,
+          "sold": 21,
+          "totalSeats": 68,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 30.88
+        }
+      ],
+      "Chain_details": [
+        {
+          "chain": "PVR",
+          "venues": 1,
+          "shows": 1,
+          "gross": 9450.0,
+          "sold": 21,
+          "totalSeats": 68,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 30.88
+        }
+      ]
+    },
+    "Avatar: Fire and Ash [IMAX 3D | English]": {
+      "shows": 9,
+      "gross": 391760.0,
+      "sold": 551,
+      "totalSeats": 2524,
+      "venues": 9,
+      "cities": 4,
+      "fastfilling": 0,
+      "housefull": 0,
+      "occupancy": 21.83,
+      "details": [
+        {
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "venues": 6,
+          "shows": 6,
+          "gross": 319144.0,
+          "sold": 409,
+          "totalSeats": 1750,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 23.37
+        },
+        {
+          "city": "Gurugram (Gurgaon)",
+          "state": "NCR",
+          "venues": 1,
+          "shows": 1,
+          "gross": 1196.0,
+          "sold": 4,
+          "totalSeats": 288,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 1.39
+        },
+        {
+          "city": "Kochi",
+          "state": "Kerala",
+          "venues": 1,
+          "shows": 1,
+          "gross": 43900.0,
+          "sold": 74,
+          "totalSeats": 229,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 32.31
+        },
+        {
+          "city": "Kolkata",
+          "state": "West Bengal",
+          "venues": 1,
+          "shows": 1,
+          "gross": 27520.0,
+          "sold": 64,
+          "totalSeats": 257,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 24.9
+        }
+      ],
+      "Chain_details": [
+        {
+          "chain": "Cinepolis",
+          "venues": 2,
+          "shows": 2,
+          "gross": 121300.0,
+          "sold": 168,
+          "totalSeats": 473,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 35.52
+        },
+        {
+          "chain": "INOX",
+          "venues": 3,
+          "shows": 3,
+          "gross": 104160.0,
+          "sold": 186,
+          "totalSeats": 834,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 22.3
+        },
+        {
+          "chain": "PVR",
+          "venues": 4,
+          "shows": 4,
+          "gross": 166300.0,
+          "sold": 197,
+          "totalSeats": 1217,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 16.19
         }
       ]
     },
     "Dhurandhar [2D | Hindi]": {
-      "shows": 3,
-      "gross": 15300.0,
-      "sold": 65,
-      "totalSeats": 733,
-      "venues": 3,
-      "cities": 1,
+      "shows": 7,
+      "gross": 27933.0,
+      "sold": 125,
+      "totalSeats": 1139,
+      "venues": 7,
+      "cities": 3,
       "fastfilling": 0,
       "housefull": 0,
-      "occupancy": 8.87,
+      "occupancy": 10.97,
       "details": [
+        {
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "venues": 1,
+          "shows": 1,
+          "gross": 5844.0,
+          "sold": 38,
+          "totalSeats": 225,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 16.89
+        },
         {
           "city": "Mumbai",
           "state": "Maharashtra",
-          "venues": 3,
-          "shows": 3,
-          "gross": 15300.0,
-          "sold": 65,
-          "totalSeats": 733,
+          "venues": 5,
+          "shows": 5,
+          "gross": 19689.0,
+          "sold": 76,
+          "totalSeats": 859,
           "fastfilling": 0,
           "housefull": 0,
-          "occupancy": 8.87
+          "occupancy": 8.85
+        },
+        {
+          "city": "Pune",
+          "state": "Maharashtra",
+          "venues": 1,
+          "shows": 1,
+          "gross": 2400.0,
+          "sold": 11,
+          "totalSeats": 55,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 20.0
         }
       ],
       "Chain_details": [
+        {
+          "chain": "INOX",
+          "venues": 1,
+          "shows": 1,
+          "gross": 5844.0,
+          "sold": 38,
+          "totalSeats": 225,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 16.89
+        },
         {
           "chain": "Cinepolis",
           "venues": 1,
@@ -76,6 +367,17 @@
           "occupancy": 11.19
         },
         {
+          "chain": "Maxus Cinemas",
+          "venues": 2,
+          "shows": 2,
+          "gross": 4389.0,
+          "sold": 11,
+          "totalSeats": 126,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 8.73
+        },
+        {
           "chain": "MovieMax",
           "venues": 2,
           "shows": 2,
@@ -85,6 +387,17 @@
           "fastfilling": 0,
           "housefull": 0,
           "occupancy": 8.31
+        },
+        {
+          "chain": "E-SQUARE",
+          "venues": 1,
+          "shows": 1,
+          "gross": 2400.0,
+          "sold": 11,
+          "totalSeats": 55,
+          "fastfilling": 0,
+          "housefull": 0,
+          "occupancy": 20.0
         }
       ]
     }
