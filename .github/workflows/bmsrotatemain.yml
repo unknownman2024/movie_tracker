@@ -7,7 +7,7 @@ on:
 
 jobs:
   # =====================================================
-  # 1️⃣ Decide rotation day
+  # 1️⃣ Decide DATE OFFSET (rotation)
   # =====================================================
   decide-day:
     runs-on: ubuntu-latest
@@ -15,12 +15,12 @@ jobs:
       days_ahead: ${{ steps.set.outputs.days_ahead }}
 
     steps:
-      - name: Decide tracking day (rotation)
+      - name: Decide tracking day
         id: set
         run: |
           RUN_INDEX=$(( ($(date -u +%H) / 2) ))
 
-          # required rotation
+          # exact rotation required
           ARR=(2 3 4 2 5 3 4)
           LEN=${#ARR[@]}
           IDX=$(( RUN_INDEX % LEN ))
@@ -32,7 +32,7 @@ jobs:
           echo "days_ahead=$DAYS_AHEAD" >> $GITHUB_OUTPUT
 
   # =====================================================
-  # 2️⃣ Run BMS scrapers (PARALLEL)
+  # 2️⃣ Run ALL scrapers in parallel (1–9)
   # =====================================================
   scrape:
     needs: decide-day
@@ -41,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     steps:
       - name: Checkout repo
@@ -52,13 +52,17 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Run BMS Rotate scraper (parallel)
+      - name: Install deps (only once per runner)
+        run: |
+          pip install cloudscraper aiohttp pytz
+
+      - name: Run scraper
         run: python bmsrotate${{ matrix.shard }}.py
         env:
           DAYS_AHEAD: ${{ needs.decide-day.outputs.days_ahead }}
 
   # =====================================================
-  # 3️⃣ Combine shards (AFTER ALL FINISH)
+  # 3️⃣ Combine shards (after ALL finish)
   # =====================================================
   combine:
     needs: scrape
