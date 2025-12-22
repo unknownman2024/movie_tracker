@@ -15,9 +15,7 @@ TIMEOUT = aiohttp.ClientTimeout(total=25)
 IST = pytz.timezone("Asia/Kolkata")
 NOW_IST = datetime.now(IST)
 
-DAYS_AHEAD = int(os.environ.get("DAYS_AHEAD", "2"))
-
-DATE_CODE = (NOW_IST + timedelta(days=DAYS_AHEAD)).strftime("%Y%m%d")
+DATE_CODE = os.environ["DATE_CODE"]
 DATE_DISTRICT = (NOW_IST + timedelta(days=DAYS_AHEAD)).strftime("%Y-%m-%d")
 
 BASE_DIR = os.path.join("advance", "data", DATE_CODE)
