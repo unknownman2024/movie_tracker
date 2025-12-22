@@ -1,10 +1,14 @@
-name: BMS Advance Tracker (Matrix + Parallel)
+name: BMS Advance Tracker (Matrix + Parallel + Git Persist)
 
 on:
   workflow_dispatch:
   schedule:
+    # IST window mapped in UTC
     - cron: "0 21-23/2,1-17/2 * * *"
-    
+
+permissions:
+  contents: write
+
 jobs:
   # =====================================================
   # 1️⃣ Decide DATE OFFSET (rotation)
@@ -15,12 +19,12 @@ jobs:
       days_ahead: ${{ steps.set.outputs.days_ahead }}
 
     steps:
-      - name: Decide tracking day
+      - name: Decide tracking day (rotation)
         id: set
         run: |
           RUN_INDEX=$(( ($(date -u +%H) / 2) ))
 
-          # exact rotation required
+          # rotation: 2,3,4,2,5,3,4
           ARR=(2 3 4 2 5 3 4)
           LEN=${#ARR[@]}
           IDX=$(( RUN_INDEX % LEN ))
@@ -32,11 +36,13 @@ jobs:
           echo "days_ahead=$DAYS_AHEAD" >> $GITHUB_OUTPUT
 
   # =====================================================
-  # 2️⃣ Run ALL scrapers in parallel (1–9)
+  # 2️⃣ Run ALL shards in parallel (1–9) + PUSH
   # =====================================================
-  scrape:
+  shards:
+    name: Shard ${{ matrix.shard }}
     needs: decide-day
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     strategy:
       fail-fast: false
@@ -44,44 +50,90 @@ jobs:
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     steps:
-      - name: Checkout repo
+      # ---------------- CHECKOUT ----------------
+      - name: 🧾 Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up Python
+      # ---------------- PYTHON ----------------
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install deps (only once per runner)
+      # ---------------- DEPENDENCIES ----------------
+      - name: 📦 Install Python dependencies
         run: |
-          pip install cloudscraper aiohttp pytz
+          python -m pip install --upgrade pip
+          pip install cloudscraper aiohttp pytz selenium webdriver-manager
 
-      - name: Run scraper
-        run: python bmsrotate${{ matrix.shard }}.py
+      # ---------------- RUN SHARD ----------------
+      - name: 🚀 Run shard scraper
+        run: |
+          python bmsrotate${{ matrix.shard }}.py
         env:
           DAYS_AHEAD: ${{ needs.decide-day.outputs.days_ahead }}
 
+      # ---------------- SAFE PUSH ----------------
+      - name: 💾 Commit shard output
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          # hard sync to avoid race conditions
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+
+          git add advance/data/
+          git commit -m "Shard ${{ matrix.shard }} data ($(date +'%Y-%m-%d %H:%M IST'))" || echo "Nothing to commit"
+          git push origin main
+
   # =====================================================
-  # 3️⃣ Combine shards (after ALL finish)
+  # 3️⃣ Combine shards (AFTER ALL SHARDS FINISH)
   # =====================================================
   combine:
-    needs: scrape
+    name: Combine all shards
+    needs: shards
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
-      - name: Checkout repo
+      # ---------------- CHECKOUT ----------------
+      - name: 🧾 Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up Python
+      # ---------------- PYTHON ----------------
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          
-      - name: Install deps
+
+      # ---------------- DEPENDENCIES ----------------
+      - name: 📦 Install combiner deps
         run: |
           pip install pytz
 
-      - name: Combine shards
-        run: python combine_shards_rotate.py
+      # ---------------- COMBINE ----------------
+      - name: 🔗 Combine shard JSONs
+        run: |
+          python combine_shards_rotate.py
         env:
           DAYS_AHEAD: ${{ needs.decide-day.outputs.days_ahead }}
+
+      # ---------------- FINAL PUSH ----------------
+      - name: 💾 Commit final combined JSONs
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+
+          git add advance/
+          git commit -m "Final combined BMS data ($(date +'%Y-%m-%d %H:%M IST'))" || echo "Nothing to commit"
+          git push origin main
