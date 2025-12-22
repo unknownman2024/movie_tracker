@@ -18,8 +18,7 @@ HARD_TIMEOUT = 15
 MAX_RECOVERY_ROUNDS = 5
 
 IST = timezone(timedelta(hours=5, minutes=30))
-DAYS_AHEAD = int(os.environ.get("DAYS_AHEAD", "2"))
-DATE_CODE = (datetime.now(IST) + timedelta(days=DAYS_AHEAD)).strftime("%Y%m%d")
+DATE_CODE = os.environ["DATE_CODE"]
 
 BASE_DIR = os.path.join("advance", "data", DATE_CODE)
 LOG_DIR = os.path.join(BASE_DIR, "logs")
