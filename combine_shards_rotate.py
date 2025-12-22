@@ -9,7 +9,8 @@ from collections import defaultdict
 # =====================================================
 IST = pytz.timezone("Asia/Kolkata")
 NOW_IST = datetime.now(IST)
-DAYS_AHEAD = int(os.environ.get("DAYS_AHEAD", "2"))
+raw = os.environ.get("DAYS_AHEAD")
+DAYS_AHEAD = int(raw) if raw and raw.isdigit() else 2
 DATE_CODE = (NOW_IST + timedelta(days=DAYS_AHEAD)).strftime("%Y%m%d")
 LAST_UPDATED = NOW_IST.strftime("%Y-%m-%d %H:%M IST")
 
