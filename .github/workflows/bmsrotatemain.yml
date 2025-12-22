@@ -25,7 +25,7 @@ jobs:
         run: |
           RUN_INDEX=$(( $(date -u +%H) ))
 
-          ARR=(2 3 4 2 5 3 4)
+          ARR=(2 3 4 2 5 3 3)
           LEN=${#ARR[@]}
           IDX=$(( RUN_INDEX % LEN ))
           DAYS_AHEAD=${ARR[$IDX]}
