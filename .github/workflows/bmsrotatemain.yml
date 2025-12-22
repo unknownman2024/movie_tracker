@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
   schedule:
     # IST window mapped in UTC (every 2 hours window)
-    - cron: "0 21-23/2,1-17/2 * * *"
-
+    - cron: "0 21-23,0-17 * * *"
+    
 permissions:
   contents: write
 
@@ -23,7 +23,7 @@ jobs:
       - name: Decide tracking day (FREEZE)
         id: set
         run: |
-          RUN_INDEX=$(( ($(date -u +%H) / 2) ))
+          RUN_INDEX=$(( $(date -u +%H) ))
 
           ARR=(2 3 4 2 5 3 4)
           LEN=${#ARR[@]}
