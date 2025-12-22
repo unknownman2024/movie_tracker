@@ -78,6 +78,6 @@ jobs:
           python-version: "3.11"
 
       - name: Combine shards
-        run: python combine_shards.py
+        run: python combine_shards_rotate.py
         env:
           DAYS_AHEAD: ${{ needs.decide-day.outputs.days_ahead }}
