@@ -297,31 +297,3 @@ save_json(
 
 print("🎉 finalsummary.json created successfully")
 print("📄 Files ready:")
-# =====================================================
-# CLEANUP SHARD FILES (AFTER MERGE)
-# =====================================================
-print("🧹 Cleaning up shard files...")
-
-# delete detailed1.json → detailed9.json
-for i in range(1, 10):
-    p = os.path.join(BASE_DIR, f"detailed{i}.json")
-    try:
-        if os.path.exists(p):
-            os.remove(p)
-            print(f"🗑 deleted {p}")
-    except Exception as e:
-        print(f"⚠ failed to delete {p}: {e}")
-
-# delete movie_summary1.json → movie_summary9.json
-for i in range(1, 10):
-    p = os.path.join(BASE_DIR, f"movie_summary{i}.json")
-    try:
-        if os.path.exists(p):
-            os.remove(p)
-            print(f"🗑 deleted {p}")
-    except Exception as e:
-        print(f"⚠ failed to delete {p}: {e}")
-
-print("✅ Cleanup complete")
-print(f"   • {FINAL_DETAILED}")
-print(f"   • {FINAL_SUMMARY}")
