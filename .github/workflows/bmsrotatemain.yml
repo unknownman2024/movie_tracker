@@ -25,14 +25,14 @@ jobs:
         run: |
           RUN_INDEX=$(( ($(date -u +%H) / 2) ))
 
-          # rotation pattern
           ARR=(2 3 4 2 5 3 4)
           LEN=${#ARR[@]}
           IDX=$(( RUN_INDEX % LEN ))
           DAYS_AHEAD=${ARR[$IDX]}
 
           if [ -z "$DAYS_AHEAD" ]; then
-            echo "❌ DAYS_AHEAD empty"; exit 1
+            echo "❌ DAYS_AHEAD empty"
+            exit 1
           fi
 
           DATE_CODE=$(TZ=Asia/Kolkata date -d "+${DAYS_AHEAD} day" +%Y%m%d)
@@ -45,7 +45,7 @@ jobs:
           echo "date_code=$DATE_CODE"   >> $GITHUB_OUTPUT
 
   # =====================================================
-  # 2️⃣ Run ALL shards in parallel (1–9) + PUSH
+  # 2️⃣ Run ALL shards in parallel (1–9)
   # =====================================================
   shards:
     name: Shard ${{ matrix.shard }}
@@ -56,28 +56,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        shard: [1,2,3,4,5,6,7,8,9]
 
     steps:
-      # ---------------- CHECKOUT ----------------
       - name: 🧾 Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
 
-      # ---------------- PYTHON ----------------
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # ---------------- DEPENDENCIES ----------------
       - name: 📦 Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install cloudscraper aiohttp pytz selenium webdriver-manager
 
-      # ---------------- RUN SHARD ----------------
       - name: 🚀 Run shard scraper
         run: |
           python bmsrotate${{ matrix.shard }}.py
@@ -85,20 +82,25 @@ jobs:
           DAYS_AHEAD: ${{ needs.decide-day.outputs.days_ahead }}
           DATE_CODE:  ${{ needs.decide-day.outputs.date_code }}
 
-      # ---------------- SAFE PUSH ----------------
       - name: 💾 Commit shard output
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
 
-          # hard sync to avoid race conditions
-          git fetch origin main
-          git checkout main
-          git reset --hard origin/main
+          git status
+          git add advance/data/${{ needs.decide-day.outputs.date_code }}/
 
-          git add advance/data/
-          git commit -m "Shard ${{ matrix.shard }} data ($(date +'%Y-%m-%d %H:%M IST'))" || echo "Nothing to commit"
-          git push origin main
+          git commit -m "Shard ${{ matrix.shard }} data (${{
+            needs.decide-day.outputs.date_code
+          }})" || echo "Nothing to commit"
+
+          # rebase-safe push (NO hard reset)
+          for i in 1 2 3; do
+            git pull --rebase origin main || true
+            git push origin main && break
+            echo "Retry push $i..."
+            sleep 3
+          done
 
   # =====================================================
   # 3️⃣ Combine shards (AFTER ALL SHARDS FINISH)
@@ -110,40 +112,40 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      # ---------------- CHECKOUT ----------------
       - name: 🧾 Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
 
-      # ---------------- PYTHON ----------------
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # ---------------- DEPENDENCIES ----------------
       - name: 📦 Install combiner deps
         run: |
           pip install pytz
 
-      # ---------------- COMBINE ----------------
       - name: 🔗 Combine shard JSONs
         run: |
           python combine_shards_rotate.py
         env:
-          DATE_CODE:  ${{ needs.decide-day.outputs.date_code }}
+          DATE_CODE: ${{ needs.decide-day.outputs.date_code }}
 
-      # ---------------- FINAL PUSH ----------------
       - name: 💾 Commit final combined JSONs
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
 
-          git fetch origin main
-          git checkout main
-          git reset --hard origin/main
+          git status
+          git diff --stat
 
-          git add advance/
-          git commit -m "Final combined BMS data ($(date +'%Y-%m-%d %H:%M IST'))" || echo "Nothing to commit"
+          git add advance/data/${{ needs.decide-day.outputs.date_code }}/finaldetailed.json
+          git add advance/data/${{ needs.decide-day.outputs.date_code }}/finalsummary.json
+
+          git commit -m "Final combined BMS data (${{
+            needs.decide-day.outputs.date_code
+          }})" || echo "Nothing to commit"
+
           git push origin main
