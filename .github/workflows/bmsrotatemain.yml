@@ -1,41 +1,56 @@
-name: BMS Advance Tracker (Shards + Combiner | SAFE)
+name: BMS Advance Tracker (2,3,4,5)
 
 on:
   workflow_dispatch:
   schedule:
-    # IST window mapped in UTC (every hour)
+    # IST window mapped in UTC (every 2 hours window)
     - cron: "0 21-23,0-17 * * *"
-
+    
 permissions:
   contents: write
 
-env:
-  PYTHONUNBUFFERED: 1
-
 jobs:
 # =====================================================
-# 1️⃣ DECIDE DATE (FREEZE ONCE)
+# 1️⃣ Decide DATE OFFSET + FREEZE DATE_CODE
 # =====================================================
   decide-day:
-    name: Decide DATE_CODE
     runs-on: ubuntu-latest
     outputs:
-      date_code: ${{ steps.set.outputs.date_code }}
+      days_ahead: ${{ steps.set.outputs.days_ahead }}
+      date_code:  ${{ steps.set.outputs.date_code }}
 
     steps:
-      - id: set
+      - name: Decide tracking day (FREEZE)
+        id: set
         run: |
-          DATE_CODE=$(date -u -d '+1 day' +%Y%m%d)
-          echo "date_code=$DATE_CODE" >> $GITHUB_OUTPUT
-          echo "📅 DATE_CODE = $DATE_CODE"
+          RUN_INDEX=$(( $(date -u +%H) ))
+
+          ARR=(2 3 4 2 5 3 4)
+          LEN=${#ARR[@]}
+          IDX=$(( RUN_INDEX % LEN ))
+          DAYS_AHEAD=${ARR[$IDX]}
+
+          if [ -z "$DAYS_AHEAD" ]; then
+            echo "❌ DAYS_AHEAD empty"
+            exit 1
+          fi
+
+          DATE_CODE=$(TZ=Asia/Kolkata date -d "+${DAYS_AHEAD} day" +%Y%m%d)
+
+          echo "Run index  : $RUN_INDEX"
+          echo "Day offset : +$DAYS_AHEAD"
+          echo "DATE_CODE  : $DATE_CODE"
+
+          echo "days_ahead=$DAYS_AHEAD" >> $GITHUB_OUTPUT
+          echo "date_code=$DATE_CODE"   >> $GITHUB_OUTPUT
 
 # =====================================================
-# 2️⃣ SHARD RUNNERS (PARALLEL)
+# 2️⃣ Run ALL shards in parallel (1–9)
 # =====================================================
   shards:
     name: Shard ${{ matrix.shard }}
-    runs-on: ubuntu-latest
     needs: decide-day
+    runs-on: ubuntu-latest
     timeout-minutes: 60
 
     strategy:
@@ -43,96 +58,103 @@ jobs:
       matrix:
         shard: [1,2,3,4,5,6,7,8,9]
 
-    env:
-      SHARD_ID: ${{ matrix.shard }}
-      DATE_CODE: ${{ needs.decide-day.outputs.date_code }}
-
     steps:
       - name: 🧾 Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
 
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: 📦 Install deps
+      - name: 📦 Install Python dependencies
         run: |
-          pip install --upgrade pip
-          pip install cloudscraper pytz aiohttp
+          python -m pip install --upgrade pip
+          pip install cloudscraper aiohttp pytz selenium webdriver-manager
 
-      - name: 🚀 Run shard ${{ matrix.shard }}
+      - name: 🚀 Run shard scraper
         run: |
           python bmsrotate${{ matrix.shard }}.py
+        env:
+          DAYS_AHEAD: ${{ needs.decide-day.outputs.days_ahead }}
+          DATE_CODE:  ${{ needs.decide-day.outputs.date_code }}
 
-      # 🔐 PUSH SHARD OUTPUT (REBASE SAFE)
-      - name: ⬆️ Push shard data
+      - name: 💾 Commit shard output (REBASE SAFE)
         run: |
           git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.email "actions@github.com"
 
-          git add advance/data/${DATE_CODE}
-          git commit -m "Shard $SHARD_ID data (${DATE_CODE})" || echo "Nothing to commit"
+          git add advance/data/${{ needs.decide-day.outputs.date_code }}/
+          git commit -m "Shard ${{ matrix.shard }} data (${{
+            needs.decide-day.outputs.date_code
+          }})" || echo "Nothing to commit"
 
-          git fetch origin
-          git pull --rebase origin main
-          git push origin main
+          # 🔁 rebase-safe retry push
+          for i in 1 2 3; do
+            git pull --rebase origin main || true
+            git push origin main && break
+            echo "Retry push $i..."
+            sleep 3
+          done
 
 # =====================================================
-# 3️⃣ COMBINER (AFTER ALL SHARDS)
+# 3️⃣ Combine shards (AFTER ALL SHARDS FINISH)
 # =====================================================
-  combiner:
-    name: Combine shards
-    runs-on: ubuntu-latest
+  combine:
+    name: Combine all shards
     needs: [decide-day, shards]
-    timeout-minutes: 20
-
-    env:
-      DATE_CODE: ${{ needs.decide-day.outputs.date_code }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: 🧾 Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      # 🔥🔥🔥 CRITICAL FIX 🔥🔥🔥
-      - name: 🔄 Sync with latest main (REQUIRED)
+          persist-credentials: true
+          
+      # 🔥🔥🔥 FIX START (MANDATORY) 🔥🔥🔥
+      - name: 🔄 Sync with latest main (FIX)
         run: |
           git fetch origin
           git reset --hard origin/main
           git status
+      # 🔥🔥🔥 FIX END 🔥🔥🔥
 
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: 📦 Install deps
+      - name: 📦 Install combiner deps
         run: |
           pip install pytz
 
-      - name: 📂 Verify shard files
-        run: |
-          echo "📁 advance/data/${DATE_CODE}"
-          ls -lh advance/data/${DATE_CODE} || true
-
-      - name: 🧩 Run combiner
+      - name: 🔗 Combine shard JSONs
         run: |
           python combine_shards_rotate.py
+        env:
+          DATE_CODE: ${{ needs.decide-day.outputs.date_code }}
 
-      # 🔐 PUSH FINAL OUTPUT
-      - name: ⬆️ Push final combined data
+      - name: 💾 Commit final combined JSONs (REBASE SAFE)
         run: |
           git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.email "actions@github.com"
 
-          git add advance/data/${DATE_CODE}/finaldetailed.json
-          git add advance/data/${DATE_CODE}/finalsummary.json
-          git commit -m "Final combined BMS data (${DATE_CODE})" || echo "Nothing to commit"
+          git add advance/data/${{ needs.decide-day.outputs.date_code }}/finaldetailed.json
+          git add advance/data/${{ needs.decide-day.outputs.date_code }}/finalsummary.json
 
-          git fetch origin
-          git pull --rebase origin main
-          git push origin main
+          git commit -m "Final combined BMS data (${{
+            needs.decide-day.outputs.date_code
+          }})" || echo "Nothing to commit"
+
+          # 🔁 rebase-safe retry push (NO FORCE)
+          for i in 1 2 3; do
+            git pull --rebase origin main || true
+            git push origin main && break
+            echo "Retry push $i..."
+            sleep 3
+          done
