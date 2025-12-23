@@ -1,4 +1,4 @@
-name: BMS TmrwAdv 1–9 + Combine (Matrix | SAFE)
+name: BMS TmrwAdv 1–9 + Combine (Matrix | HARD SAFE)
 
 on:
   workflow_dispatch:
@@ -10,6 +10,9 @@ permissions:
   contents: write
 
 jobs:
+# =====================================================
+# 1️⃣ SHARDS (PARALLEL – NO PUSH ISSUES HERE)
+# =====================================================
   shards:
     name: Shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
@@ -21,21 +24,18 @@ jobs:
         shard: [1,2,3,4,5,6,7,8,9]
 
     steps:
-      # ---------------- CHECKOUT ----------------
       - name: 🧾 Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          persist-credentials: false
+          persist-credentials: true
 
-      # ---------------- PYTHON ----------------
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # ---------------- CHROME ----------------
-      - name: 🌐 Install Google Chrome
+      - name: 🌐 Install Chrome
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip
@@ -44,65 +44,122 @@ jobs:
           rm -f google-chrome-stable_current_amd64.deb
           google-chrome --version
 
-      # ---------------- DEPENDENCIES ----------------
-      - name: 📦 Install Python dependencies
+      - name: 📦 Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install selenium webdriver-manager cloudscraper aiohttp pytz
 
-      # ---------------- RUN SHARD ----------------
       - name: 🚀 Run shard scraper
         env:
           SHARD_ID: ${{ matrix.shard }}
         run: |
           python bms${{ matrix.shard }}.py
 
-      # ---------------- VERIFY ----------------
-      - name: 🔍 Verify shard output
+      - name: 💾 Commit & push shard data
         run: |
-          echo "Shard ${{ matrix.shard }} finished"
-          ls -lh advance/ || true
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
 
+          git add advance/
+          git commit -m "BMS shard ${{ matrix.shard }} ($(date +'%Y-%m-%d %H:%M IST'))" || exit 0
+
+          for i in 1 2 3; do
+            git pull --rebase origin main || true
+            git push origin main && exit 0
+            sleep 3
+          done
+
+          git push --force-with-lease origin main || true
+
+# =====================================================
+# 2️⃣ COMBINER (SINGLE WRITER – HARD SAFE)
+# =====================================================
   combine:
-    name: Combine all shards (SINGLE WRITER)
+    name: Combine all shards (SAFE)
     needs: shards
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+
+    # 🔒 absolutely critical
+    concurrency:
+      group: bms-combiner
+      cancel-in-progress: false
 
     steps:
-      # ---------------- CHECKOUT ----------------
       - name: 🧾 Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: true
 
-      # ---------------- PYTHON ----------------
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # ---------------- INSTALL ----------------
       - name: 📦 Install deps
         run: |
           pip install pytz
 
-      # ---------------- COMBINE ----------------
-      - name: 🔗 Combine shard JSONs
+      - name: 🔁 Safe combine + push (auto retry)
         run: |
-          python combine_shards.py
+          set -e
 
-      # ---------------- COMMIT & PUSH ----------------
-      - name: 💾 Commit & push final data
-        run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
 
-          git status
-          git add advance/
+          MAX_TRIES=6
+          TRY=1
 
-          git commit -m "Final combined BMS data ($(date +'%Y-%m-%d %H:%M IST'))" || echo "Nothing to commit"
+          while [ $TRY -le $MAX_TRIES ]; do
+            echo "🔁 Combine attempt $TRY / $MAX_TRIES"
 
-          git pull --rebase origin main
-          git push origin main
+            # 1️⃣ Always start from latest remote main
+            git fetch origin main
+            git reset --hard origin/main
+
+            # 2️⃣ Deterministic combine
+            python combine_shards.py
+
+            git add advance/
+
+            if git diff --cached --quiet; then
+              echo "✅ No changes after combine"
+              exit 0
+            fi
+
+            git commit -m "Final combined BMS data ($(date +'%Y-%m-%d %H:%M IST'))"
+
+            # 3️⃣ Try push
+            if git push origin main; then
+              echo "✅ Combine push successful"
+              exit 0
+            fi
+
+            echo "⚠ Push failed (main moved). Retrying..."
+            TRY=$((TRY+1))
+            sleep 5
+          done
+
+          echo "❌ Combine failed after $MAX_TRIES attempts"
+          exit 1
+
+# =====================================================
+# 3️⃣ AUTO RE-RUN COMBINER IF IT STILL FAILS
+# =====================================================
+  retry-combine:
+    name: Auto re-run combiner
+    needs: combine
+    if: failure()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🔁 Trigger workflow again
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: context.workflow,
+              ref: context.ref
+            });
