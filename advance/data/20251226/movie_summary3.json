@@ -38,15 +38,15 @@
     ]
   },
   "Champion [2D | Telugu]": {
-    "shows": 36,
-    "gross": 249060.0,
-    "sold": 2228,
-    "totalSeats": 17020,
-    "venues": 9,
-    "cities": 9,
+    "shows": 39,
+    "gross": 204960.0,
+    "sold": 1808,
+    "totalSeats": 18184,
+    "venues": 10,
+    "cities": 10,
     "fastfilling": 0,
     "housefull": 0,
-    "occupancy": 13.09,
+    "occupancy": 9.94,
     "details": [
       {
         "city": "Sircilla",
@@ -125,12 +125,12 @@
         "state": "Telangana",
         "venues": 1,
         "shows": 4,
-        "gross": 44100.0,
-        "sold": 420,
+        "gross": 0.0,
+        "sold": 0,
         "totalSeats": 1908,
         "fastfilling": 0,
         "housefull": 0,
-        "occupancy": 22.01
+        "occupancy": 0.0
       },
       {
         "city": "Siddipet",
@@ -152,6 +152,18 @@
         "gross": 0.0,
         "sold": 0,
         "totalSeats": 1916,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Bhimavaram",
+        "state": "Andhra Pradesh",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1164,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -195,12 +207,12 @@
         "chain": "Sri Balaji Theater: Sathupally",
         "venues": 1,
         "shows": 4,
-        "gross": 44100.0,
-        "sold": 420,
+        "gross": 0.0,
+        "sold": 0,
         "totalSeats": 1908,
         "fastfilling": 0,
         "housefull": 0,
-        "occupancy": 22.01
+        "occupancy": 0.0
       },
       {
         "chain": "Maheshwari 2K Dolby Atmos- Kothagudem",
@@ -212,31 +224,42 @@
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
+      },
+      {
+        "chain": "Justickets",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1164,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
       }
     ]
   },
   "Mark [2D | Kannada]": {
     "shows": 9,
-    "gross": 28500.0,
-    "sold": 123,
+    "gross": 29000.0,
+    "sold": 125,
     "totalSeats": 3285,
     "venues": 2,
     "cities": 2,
     "fastfilling": 0,
     "housefull": 0,
-    "occupancy": 3.74,
+    "occupancy": 3.81,
     "details": [
       {
         "city": "Tumakuru (Tumkur)",
         "state": "Karnataka",
         "venues": 1,
         "shows": 5,
-        "gross": 28500.0,
-        "sold": 123,
+        "gross": 29000.0,
+        "sold": 125,
         "totalSeats": 2765,
         "fastfilling": 0,
         "housefull": 0,
-        "occupancy": 4.45
+        "occupancy": 4.52
       },
       {
         "city": "Shirali",
@@ -256,12 +279,12 @@
         "chain": "Jai Bharath Theatre: Tumkur",
         "venues": 1,
         "shows": 5,
-        "gross": 28500.0,
-        "sold": 123,
+        "gross": 29000.0,
+        "sold": 125,
         "totalSeats": 2765,
         "fastfilling": 0,
         "housefull": 0,
-        "occupancy": 4.45
+        "occupancy": 4.52
       },
       {
         "chain": "J.K. Cinemas Group",
@@ -273,6 +296,67 @@
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
+      }
+    ]
+  },
+  "Eesha [2D | Telugu]": {
+    "shows": 8,
+    "gross": 39942.0,
+    "sold": 312,
+    "totalSeats": 3532,
+    "venues": 2,
+    "cities": 2,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 8.83,
+    "details": [
+      {
+        "city": "Narasannapeta",
+        "state": "Andhra Pradesh",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 960,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Vizianagaram",
+        "state": "Andhra Pradesh",
+        "venues": 1,
+        "shows": 4,
+        "gross": 39942.0,
+        "sold": 312,
+        "totalSeats": 2572,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 12.13
+      }
+    ],
+    "Chain_details": [
+      {
+        "chain": "Justickets",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 960,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Venkateshwara Enterprises",
+        "venues": 1,
+        "shows": 4,
+        "gross": 39942.0,
+        "sold": 312,
+        "totalSeats": 2572,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 12.13
       }
     ]
   },
@@ -423,26 +507,26 @@
   },
   "Dhurandhar [2D | Hindi]": {
     "shows": 8,
-    "gross": 25200.0,
-    "sold": 86,
-    "totalSeats": 2908,
+    "gross": 25600.0,
+    "sold": 87,
+    "totalSeats": 2909,
     "venues": 1,
     "cities": 1,
     "fastfilling": 0,
     "housefull": 0,
-    "occupancy": 2.96,
+    "occupancy": 2.99,
     "details": [
       {
         "city": "Ludhiana",
         "state": "Punjab",
         "venues": 1,
         "shows": 8,
-        "gross": 25200.0,
-        "sold": 86,
-        "totalSeats": 2908,
+        "gross": 25600.0,
+        "sold": 87,
+        "totalSeats": 2909,
         "fastfilling": 0,
         "housefull": 0,
-        "occupancy": 2.96
+        "occupancy": 2.99
       }
     ],
     "Chain_details": [
@@ -450,12 +534,12 @@
         "chain": "Cinepolis",
         "venues": 1,
         "shows": 8,
-        "gross": 25200.0,
-        "sold": 86,
-        "totalSeats": 2908,
+        "gross": 25600.0,
+        "sold": 87,
+        "totalSeats": 2909,
         "fastfilling": 0,
         "housefull": 0,
-        "occupancy": 2.96
+        "occupancy": 2.99
       }
     ]
   },
@@ -760,44 +844,6 @@
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
-      }
-    ]
-  },
-  "Eesha [2D | Telugu]": {
-    "shows": 4,
-    "gross": 40436.0,
-    "sold": 316,
-    "totalSeats": 2572,
-    "venues": 1,
-    "cities": 1,
-    "fastfilling": 0,
-    "housefull": 0,
-    "occupancy": 12.29,
-    "details": [
-      {
-        "city": "Vizianagaram",
-        "state": "Andhra Pradesh",
-        "venues": 1,
-        "shows": 4,
-        "gross": 40436.0,
-        "sold": 316,
-        "totalSeats": 2572,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 12.29
-      }
-    ],
-    "Chain_details": [
-      {
-        "chain": "Venkateshwara Enterprises",
-        "venues": 1,
-        "shows": 4,
-        "gross": 40436.0,
-        "sold": 316,
-        "totalSeats": 2572,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 12.29
       }
     ]
   },
