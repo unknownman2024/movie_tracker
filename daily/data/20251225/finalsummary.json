@@ -1,5 +1,5 @@
 {
-  "last_updated": "2025-12-25 01:51 IST",
+  "last_updated": "2025-12-25 02:49 IST",
   "movies": {
     "Dhurandhar [2D | Hindi]": {
       "shows": 3,
@@ -48,6 +48,89 @@
           "fastfilling": 0,
           "housefull": 0,
           "occupancy": 6.6
+        }
+      ]
+    },
+    "Mark [2D | Kannada]": {
+      "shows": 5,
+      "gross": 497315.0,
+      "sold": 1545,
+      "totalSeats": 1951,
+      "venues": 4,
+      "cities": 2,
+      "fastfilling": 3,
+      "housefull": 1,
+      "occupancy": 79.19,
+      "details": [
+        {
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "venues": 3,
+          "shows": 3,
+          "gross": 420915.0,
+          "sold": 1163,
+          "totalSeats": 1278,
+          "fastfilling": 2,
+          "housefull": 1,
+          "occupancy": 91.0
+        },
+        {
+          "city": "Hosur",
+          "state": "Tamil Nadu",
+          "venues": 1,
+          "shows": 2,
+          "gross": 76400.0,
+          "sold": 382,
+          "totalSeats": 673,
+          "fastfilling": 1,
+          "housefull": 0,
+          "occupancy": 56.76
+        }
+      ],
+      "Chain_details": [
+        {
+          "chain": "Brundha Theater: Bengaluru",
+          "venues": 1,
+          "shows": 1,
+          "gross": 72800.0,
+          "sold": 182,
+          "totalSeats": 184,
+          "fastfilling": 0,
+          "housefull": 1,
+          "occupancy": 98.91
+        },
+        {
+          "chain": "Sri Krishna Theatre: Bommanahalli",
+          "venues": 1,
+          "shows": 1,
+          "gross": 159700.0,
+          "sold": 504,
+          "totalSeats": 589,
+          "fastfilling": 1,
+          "housefull": 0,
+          "occupancy": 85.57
+        },
+        {
+          "chain": "Victory Cinema",
+          "venues": 1,
+          "shows": 1,
+          "gross": 188415.0,
+          "sold": 477,
+          "totalSeats": 505,
+          "fastfilling": 1,
+          "housefull": 0,
+          "occupancy": 94.46
+        },
+        {
+          "chain": "Grand Cinema",
+          "venues": 1,
+          "shows": 2,
+          "gross": 76400.0,
+          "sold": 382,
+          "totalSeats": 673,
+          "fastfilling": 1,
+          "housefull": 0,
+          "occupancy": 56.76
         }
       ]
     }
