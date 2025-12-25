@@ -71,11 +71,11 @@
       }
     ]
   },
-  "Sarvam Maya [2D | Malayalam]": {
-    "shows": 8,
+  "Avatar: Fire and Ash [3D | English]": {
+    "shows": 4,
     "gross": 0.0,
     "sold": 0,
-    "totalSeats": 1672,
+    "totalSeats": 614,
     "venues": 2,
     "cities": 2,
     "fastfilling": 0,
@@ -86,13 +86,74 @@
         "city": "Pathanamthitta",
         "state": "Kerala",
         "venues": 1,
-        "shows": 4,
+        "shows": 1,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 1000,
+        "totalSeats": 110,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
+      },
+      {
+        "city": "Pulpally",
+        "state": "Kerala",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 504,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      }
+    ],
+    "Chain_details": [
+      {
+        "chain": "Trinity Movie Max",
+        "venues": 1,
+        "shows": 1,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 110,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Penta Cinemas",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 504,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      }
+    ]
+  },
+  "Sarvam Maya [2D | Malayalam]": {
+    "shows": 8,
+    "gross": 2090.0,
+    "sold": 11,
+    "totalSeats": 1672,
+    "venues": 2,
+    "cities": 2,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 0.66,
+    "details": [
+      {
+        "city": "Pathanamthitta",
+        "state": "Kerala",
+        "venues": 1,
+        "shows": 4,
+        "gross": 2090.0,
+        "sold": 11,
+        "totalSeats": 1000,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 1.1
       },
       {
         "city": "Pulpally",
@@ -112,12 +173,12 @@
         "chain": "Trinity Movie Max",
         "venues": 1,
         "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
+        "gross": 2090.0,
+        "sold": 11,
         "totalSeats": 1000,
         "fastfilling": 0,
         "housefull": 0,
-        "occupancy": 0.0
+        "occupancy": 1.1
       },
       {
         "chain": "Penta Cinemas",
@@ -133,15 +194,15 @@
     ]
   },
   "Dhurandhar [2D | Hindi]": {
-    "shows": 67,
-    "gross": 0.0,
-    "sold": 0,
-    "totalSeats": 8591,
-    "venues": 21,
-    "cities": 19,
+    "shows": 104,
+    "gross": 70250.0,
+    "sold": 220,
+    "totalSeats": 18029,
+    "venues": 33,
+    "cities": 25,
     "fastfilling": 0,
     "housefull": 0,
-    "occupancy": 0.0,
+    "occupancy": 1.22,
     "details": [
       {
         "city": "Pathanamthitta",
@@ -151,6 +212,30 @@
         "gross": 0.0,
         "sold": 0,
         "totalSeats": 110,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Bargarh",
+        "state": "Odisha",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 172,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Mehkar",
+        "state": "Maharashtra",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 516,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -206,11 +291,11 @@
       {
         "city": "Gadarwara",
         "state": "Madhya Pradesh",
-        "venues": 1,
-        "shows": 4,
+        "venues": 2,
+        "shows": 7,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 400,
+        "totalSeats": 2485,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -218,11 +303,11 @@
       {
         "city": "Etawah",
         "state": "Uttar Pradesh",
-        "venues": 1,
-        "shows": 4,
+        "venues": 2,
+        "shows": 8,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 432,
+        "totalSeats": 912,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -240,13 +325,13 @@
         "occupancy": 0.0
       },
       {
-        "city": "Baloda Bazar",
-        "state": "Chhattisgarh",
+        "city": "Maharajganj",
+        "state": "Uttar Pradesh",
         "venues": 1,
         "shows": 3,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 108,
+        "totalSeats": 300,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -271,6 +356,18 @@
         "gross": 0.0,
         "sold": 0,
         "totalSeats": 994,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Lonand",
+        "state": "Maharashtra",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 184,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -302,11 +399,11 @@
       {
         "city": "Betul",
         "state": "Madhya Pradesh",
-        "venues": 1,
-        "shows": 4,
+        "venues": 2,
+        "shows": 9,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 727,
+        "totalSeats": 2123,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -314,11 +411,11 @@
       {
         "city": "Wani",
         "state": "Maharashtra",
-        "venues": 1,
-        "shows": 3,
+        "venues": 2,
+        "shows": 5,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 171,
+        "totalSeats": 251,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -326,11 +423,23 @@
       {
         "city": "Varanasi",
         "state": "Uttar Pradesh",
+        "venues": 3,
+        "shows": 12,
+        "gross": 70250.0,
+        "sold": 220,
+        "totalSeats": 2829,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 7.78
+      },
+      {
+        "city": "Pilibhit",
+        "state": "Uttar Pradesh",
         "venues": 1,
-        "shows": 4,
+        "shows": 3,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 400,
+        "totalSeats": 252,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -343,6 +452,30 @@
         "gross": 0.0,
         "sold": 0,
         "totalSeats": 584,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Veraval",
+        "state": "Gujarat",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 500,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Hinganghat",
+        "state": "Maharashtra",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1152,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -380,6 +513,28 @@
         "gross": 0.0,
         "sold": 0,
         "totalSeats": 110,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Deepali Cinemax: Bargarh",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 172,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Dharmatma Entertainment",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 516,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -429,12 +584,34 @@
         "occupancy": 0.0
       },
       {
+        "chain": "Alka Talkies",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 2085,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
         "chain": "K Sera Sera Box Office Pvt. Ltd.",
         "venues": 3,
         "shows": 12,
         "gross": 0.0,
         "sold": 0,
         "totalSeats": 1232,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Mad Moviez: Etawah",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 480,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -451,12 +628,12 @@
         "occupancy": 0.0
       },
       {
-        "chain": "Shiva Bollywood Theatre: Baloda Bazar",
+        "chain": "Ms RKG Enterprises Trading Company",
         "venues": 1,
         "shows": 3,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 108,
+        "totalSeats": 300,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -506,6 +683,17 @@
         "occupancy": 0.0
       },
       {
+        "chain": "K MAHENDRA TOURING TALKIES",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 184,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
         "chain": "Anupam Cineplex",
         "venues": 1,
         "shows": 4,
@@ -518,11 +706,22 @@
       },
       {
         "chain": "Cinepolis P&A",
-        "venues": 1,
-        "shows": 3,
+        "venues": 2,
+        "shows": 5,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 1458,
+        "totalSeats": 1958,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Kantishiva Cinemas",
+        "venues": 1,
+        "shows": 5,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1396,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -550,12 +749,67 @@
         "occupancy": 0.0
       },
       {
+        "chain": "Deepti Sky Cinex: Wani",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 80,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "JHV",
+        "venues": 1,
+        "shows": 5,
+        "gross": 70250.0,
+        "sold": 220,
+        "totalSeats": 1733,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 12.69
+      },
+      {
+        "chain": "Anand Mandir",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 696,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Shreyasa Rainbow Grandview",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 252,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
         "chain": "Vision Entertainment",
         "venues": 1,
         "shows": 4,
         "gross": 0.0,
         "sold": 0,
         "totalSeats": 584,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Sirattal Entertainment",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1152,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -623,12 +877,12 @@
     ]
   },
   "Bha. Bha. Ba. [2D | Malayalam]": {
-    "shows": 12,
+    "shows": 15,
     "gross": 0.0,
     "sold": 0,
-    "totalSeats": 3224,
-    "venues": 3,
-    "cities": 2,
+    "totalSeats": 4367,
+    "venues": 4,
+    "cities": 3,
     "fastfilling": 0,
     "housefull": 0,
     "occupancy": 0.0,
@@ -653,6 +907,18 @@
         "gross": 0.0,
         "sold": 0,
         "totalSeats": 832,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Kollam",
+        "state": "Kerala",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1143,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -682,6 +948,17 @@
         "occupancy": 0.0
       },
       {
+        "chain": "NVP Cinema",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1143,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
         "chain": "Trinity Movie Max",
         "venues": 1,
         "shows": 4,
@@ -694,11 +971,49 @@
       }
     ]
   },
+  "Charidham - A Journey Within [2D | Odia]": {
+    "shows": 2,
+    "gross": 0.0,
+    "sold": 0,
+    "totalSeats": 172,
+    "venues": 1,
+    "cities": 1,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 0.0,
+    "details": [
+      {
+        "city": "Bargarh",
+        "state": "Odisha",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 172,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      }
+    ],
+    "Chain_details": [
+      {
+        "chain": "Deepali Cinemax: Bargarh",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 172,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      }
+    ]
+  },
   "Shambhala [2D | Telugu]": {
     "shows": 34,
     "gross": 0.0,
     "sold": 0,
-    "totalSeats": 10810,
+    "totalSeats": 10534,
     "venues": 10,
     "cities": 10,
     "fastfilling": 0,
@@ -736,7 +1051,7 @@
         "shows": 4,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 1140,
+        "totalSeats": 864,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -855,7 +1170,7 @@
         "shows": 4,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 1140,
+        "totalSeats": 864,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -922,6 +1237,438 @@
         "gross": 0.0,
         "sold": 0,
         "totalSeats": 396,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      }
+    ]
+  },
+  "Asha (2025) [2D | Marathi]": {
+    "shows": 5,
+    "gross": 0.0,
+    "sold": 0,
+    "totalSeats": 401,
+    "venues": 4,
+    "cities": 3,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 0.0,
+    "details": [
+      {
+        "city": "Mehkar",
+        "state": "Maharashtra",
+        "venues": 1,
+        "shows": 1,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 172,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Lonand",
+        "state": "Maharashtra",
+        "venues": 1,
+        "shows": 1,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 92,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Wani",
+        "state": "Maharashtra",
+        "venues": 2,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 137,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      }
+    ],
+    "Chain_details": [
+      {
+        "chain": "Dharmatma Entertainment",
+        "venues": 1,
+        "shows": 1,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 172,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "K MAHENDRA TOURING TALKIES",
+        "venues": 1,
+        "shows": 1,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 92,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Sujata Theatre: Wani",
+        "venues": 1,
+        "shows": 1,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 57,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Deepti Sky Cinex: Wani",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 80,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      }
+    ]
+  },
+  "Tu Meri Main Tera Main Tera Tu Meri [2D | Hindi]": {
+    "shows": 47,
+    "gross": 30840.0,
+    "sold": 88,
+    "totalSeats": 7150,
+    "venues": 15,
+    "cities": 14,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 1.23,
+    "details": [
+      {
+        "city": "Mehkar",
+        "state": "Maharashtra",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 284,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Jajpur Road",
+        "state": "Odisha",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 252,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Angul",
+        "state": "Odisha",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 326,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Pune",
+        "state": "Maharashtra",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 300,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Malegaon",
+        "state": "Maharashtra",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 924,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Morena",
+        "state": "Madhya Pradesh",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 200,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Rajgangpur",
+        "state": "Odisha",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 228,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Kichha",
+        "state": "Uttarakhand",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 372,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Amravati",
+        "state": "Maharashtra",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1164,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Betul",
+        "state": "Madhya Pradesh",
+        "venues": 2,
+        "shows": 7,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1578,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Varanasi",
+        "state": "Uttar Pradesh",
+        "venues": 1,
+        "shows": 2,
+        "gross": 30840.0,
+        "sold": 88,
+        "totalSeats": 690,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 12.75
+      },
+      {
+        "city": "Shirur",
+        "state": "Maharashtra",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 432,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Veraval",
+        "state": "Gujarat",
+        "venues": 1,
+        "shows": 1,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 250,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Sitamarhi",
+        "state": "Bihar",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 150,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      }
+    ],
+    "Chain_details": [
+      {
+        "chain": "Dharmatma Entertainment",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 284,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Saraswati Multiplex: Jajpur Road",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 252,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "M/S Divyajyoti Talkies",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 326,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "K Sera Sera Box Office Pvt. Ltd.",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 300,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Mohan Cinema: Malegaon",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 924,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Mayur Talkies: Morena",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 200,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Milan Talkies: Rajgangpur",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 228,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Urvashi Talkies",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 372,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Cinepolis P&A",
+        "venues": 2,
+        "shows": 5,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1414,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Kantishiva Cinemas",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1305,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Fortune Cinema",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 273,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "JHV",
+        "venues": 1,
+        "shows": 2,
+        "gross": 30840.0,
+        "sold": 88,
+        "totalSeats": 690,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 12.75
+      },
+      {
+        "chain": "Vision Entertainment",
+        "venues": 1,
+        "shows": 3,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 432,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "R D Entertainments Pvt Ltd: Sitamarhi",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 150,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -1127,6 +1874,90 @@
       }
     ]
   },
+  "Akhanda 2: Thaandavam [2D | Telugu]": {
+    "shows": 12,
+    "gross": 0.0,
+    "sold": 0,
+    "totalSeats": 3464,
+    "venues": 3,
+    "cities": 3,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 0.0,
+    "details": [
+      {
+        "city": "Madhira",
+        "state": "Telangana",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1136,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Payakaraopeta",
+        "state": "Andhra Pradesh",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 0,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Proddatur",
+        "state": "Andhra Pradesh",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 2328,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      }
+    ],
+    "Chain_details": [
+      {
+        "chain": "Lakshmi Srinivasa Theatre: Madhira",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1136,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Justickets",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 0,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Sri Sai Rajeswari Complex Cine Hub: Proddatur",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 2328,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      }
+    ]
+  },
   "Eesha [2D | Telugu]": {
     "shows": 16,
     "gross": 33060.0,
@@ -1234,67 +2065,6 @@
       }
     ]
   },
-  "Akhanda 2: Thaandavam [2D | Telugu]": {
-    "shows": 8,
-    "gross": 15300.0,
-    "sold": 102,
-    "totalSeats": 2328,
-    "venues": 2,
-    "cities": 2,
-    "fastfilling": 0,
-    "housefull": 0,
-    "occupancy": 4.38,
-    "details": [
-      {
-        "city": "Payakaraopeta",
-        "state": "Andhra Pradesh",
-        "venues": 1,
-        "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 0,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "city": "Proddatur",
-        "state": "Andhra Pradesh",
-        "venues": 1,
-        "shows": 4,
-        "gross": 15300.0,
-        "sold": 102,
-        "totalSeats": 2328,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 4.38
-      }
-    ],
-    "Chain_details": [
-      {
-        "chain": "Justickets",
-        "venues": 1,
-        "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 0,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "chain": "Sri Sai Rajeswari Complex Cine Hub: Proddatur",
-        "venues": 1,
-        "shows": 4,
-        "gross": 15300.0,
-        "sold": 102,
-        "totalSeats": 2328,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 4.38
-      }
-    ]
-  },
   "Projapati 2 [2D | Bengali]": {
     "shows": 8,
     "gross": 0.0,
@@ -1379,12 +2149,163 @@
       }
     ]
   },
+  "Avatar: Fire and Ash [3D | Tamil]": {
+    "shows": 28,
+    "gross": 16380.0,
+    "sold": 117,
+    "totalSeats": 9250,
+    "venues": 8,
+    "cities": 4,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 1.26,
+    "details": [
+      {
+        "city": "Pollachi",
+        "state": "Tamil Nadu",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1036,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Madurai",
+        "state": "Tamil Nadu",
+        "venues": 5,
+        "shows": 20,
+        "gross": 16380.0,
+        "sold": 117,
+        "totalSeats": 6236,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 1.88
+      },
+      {
+        "city": "Acharapakkam",
+        "state": "Tamil Nadu",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 938,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Theni",
+        "state": "Tamil Nadu",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1040,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      }
+    ],
+    "Chain_details": [
+      {
+        "chain": "Vishal Cinemas: Pollachi",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1036,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "SDC Cinemas",
+        "venues": 1,
+        "shows": 4,
+        "gross": 11200.0,
+        "sold": 80,
+        "totalSeats": 1896,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 4.22
+      },
+      {
+        "chain": "Rajaiyyer Kannan",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 688,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Annamalai Cinemas A/C 4K: Madurai",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 728,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Thangaregal Cinemas",
+        "venues": 1,
+        "shows": 4,
+        "gross": 5180.0,
+        "sold": 37,
+        "totalSeats": 1420,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 2.61
+      },
+      {
+        "chain": "Midlaand Cinemas",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1504,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Anand Theatre: Acharapakkam",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 938,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Lucky Cinemas Dolby Atmos: Periyakulam",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1040,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      }
+    ]
+  },
   "Sirai [2D | Tamil]": {
-    "shows": 30,
+    "shows": 32,
     "gross": 0.0,
     "sold": 0,
-    "totalSeats": 11930,
-    "venues": 8,
+    "totalSeats": 12798,
+    "venues": 9,
     "cities": 4,
     "fastfilling": 0,
     "housefull": 0,
@@ -1393,11 +2314,11 @@
       {
         "city": "Pollachi",
         "state": "Tamil Nadu",
-        "venues": 1,
-        "shows": 4,
+        "venues": 2,
+        "shows": 6,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 2864,
+        "totalSeats": 3732,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -1442,11 +2363,11 @@
     "Chain_details": [
       {
         "chain": "Vishal Cinemas: Pollachi",
-        "venues": 1,
-        "shows": 4,
+        "venues": 2,
+        "shows": 6,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 2864,
+        "totalSeats": 3732,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -1652,266 +2573,6 @@
       }
     ]
   },
-  "Avatar: Fire and Ash [3D | English]": {
-    "shows": 3,
-    "gross": 0.0,
-    "sold": 0,
-    "totalSeats": 504,
-    "venues": 1,
-    "cities": 1,
-    "fastfilling": 0,
-    "housefull": 0,
-    "occupancy": 0.0,
-    "details": [
-      {
-        "city": "Pulpally",
-        "state": "Kerala",
-        "venues": 1,
-        "shows": 3,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 504,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      }
-    ],
-    "Chain_details": [
-      {
-        "chain": "Penta Cinemas",
-        "venues": 1,
-        "shows": 3,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 504,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      }
-    ]
-  },
-  "Tu Meri Main Tera Main Tera Tu Meri [2D | Hindi]": {
-    "shows": 31,
-    "gross": 0.0,
-    "sold": 0,
-    "totalSeats": 3469,
-    "venues": 9,
-    "cities": 9,
-    "fastfilling": 0,
-    "housefull": 0,
-    "occupancy": 0.0,
-    "details": [
-      {
-        "city": "Jajpur Road",
-        "state": "Odisha",
-        "venues": 1,
-        "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 252,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "city": "Angul",
-        "state": "Odisha",
-        "venues": 1,
-        "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 326,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "city": "Pune",
-        "state": "Maharashtra",
-        "venues": 1,
-        "shows": 3,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 300,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "city": "Morena",
-        "state": "Madhya Pradesh",
-        "venues": 1,
-        "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 200,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "city": "Kichha",
-        "state": "Uttarakhand",
-        "venues": 1,
-        "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 372,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "city": "Amravati",
-        "state": "Maharashtra",
-        "venues": 1,
-        "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 1164,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "city": "Betul",
-        "state": "Madhya Pradesh",
-        "venues": 1,
-        "shows": 3,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 273,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "city": "Shirur",
-        "state": "Maharashtra",
-        "venues": 1,
-        "shows": 3,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 432,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "city": "Sitamarhi",
-        "state": "Bihar",
-        "venues": 1,
-        "shows": 2,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 150,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      }
-    ],
-    "Chain_details": [
-      {
-        "chain": "Saraswati Multiplex: Jajpur Road",
-        "venues": 1,
-        "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 252,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "chain": "M/S Divyajyoti Talkies",
-        "venues": 1,
-        "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 326,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "chain": "K Sera Sera Box Office Pvt. Ltd.",
-        "venues": 1,
-        "shows": 3,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 300,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "chain": "Mayur Talkies: Morena",
-        "venues": 1,
-        "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 200,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "chain": "Urvashi Talkies",
-        "venues": 1,
-        "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 372,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "chain": "Cinepolis P&A",
-        "venues": 1,
-        "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 1164,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "chain": "Fortune Cinema",
-        "venues": 1,
-        "shows": 3,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 273,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "chain": "Vision Entertainment",
-        "venues": 1,
-        "shows": 3,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 432,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "chain": "R D Entertainments Pvt Ltd: Sitamarhi",
-        "venues": 1,
-        "shows": 2,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 150,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      }
-    ]
-  },
   "Vrusshabha [2D | Hindi]": {
     "shows": 6,
     "gross": 0.0,
@@ -2035,15 +2696,15 @@
     ]
   },
   "Avatar: Fire and Ash [3D | Hindi]": {
-    "shows": 4,
-    "gross": 0.0,
-    "sold": 0,
-    "totalSeats": 441,
-    "venues": 2,
-    "cities": 2,
+    "shows": 8,
+    "gross": 30840.0,
+    "sold": 88,
+    "totalSeats": 1745,
+    "venues": 4,
+    "cities": 4,
     "fastfilling": 0,
     "housefull": 0,
-    "occupancy": 0.0,
+    "occupancy": 5.04,
     "details": [
       {
         "city": "Angul",
@@ -2056,6 +2717,30 @@
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
+      },
+      {
+        "city": "Betul",
+        "state": "Madhya Pradesh",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 614,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Varanasi",
+        "state": "Uttar Pradesh",
+        "venues": 1,
+        "shows": 2,
+        "gross": 30840.0,
+        "sold": 88,
+        "totalSeats": 690,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 12.75
       },
       {
         "city": "Sitamarhi",
@@ -2083,6 +2768,28 @@
         "occupancy": 0.0
       },
       {
+        "chain": "Kantishiva Cinemas",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 614,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "JHV",
+        "venues": 1,
+        "shows": 2,
+        "gross": 30840.0,
+        "sold": 88,
+        "totalSeats": 690,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 12.75
+      },
+      {
         "chain": "R D Entertainments Pvt Ltd: Sitamarhi",
         "venues": 1,
         "shows": 1,
@@ -2099,7 +2806,7 @@
     "shows": 8,
     "gross": 0.0,
     "sold": 0,
-    "totalSeats": 2300,
+    "totalSeats": 2036,
     "venues": 2,
     "cities": 2,
     "fastfilling": 0,
@@ -2113,7 +2820,7 @@
         "shows": 4,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 1284,
+        "totalSeats": 1020,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -2138,7 +2845,7 @@
         "shows": 4,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 1284,
+        "totalSeats": 1020,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -2335,49 +3042,49 @@
       }
     ]
   },
-  "Avatar: Fire and Ash [3D | Tamil]": {
-    "shows": 18,
-    "gross": 11200.0,
-    "sold": 80,
-    "totalSeats": 5290,
-    "venues": 5,
+  "Dhanesh Ke Aradhna [2D | Chattisgarhi]": {
+    "shows": 12,
+    "gross": 0.0,
+    "sold": 0,
+    "totalSeats": 2092,
+    "venues": 3,
     "cities": 3,
     "fastfilling": 0,
     "housefull": 0,
-    "occupancy": 1.51,
+    "occupancy": 0.0,
     "details": [
       {
-        "city": "Madurai",
-        "state": "Tamil Nadu",
-        "venues": 3,
-        "shows": 12,
-        "gross": 11200.0,
-        "sold": 80,
-        "totalSeats": 3312,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 2.42
-      },
-      {
-        "city": "Acharapakkam",
-        "state": "Tamil Nadu",
+        "city": "Baloda Bazar",
+        "state": "Chhattisgarh",
         "venues": 1,
-        "shows": 2,
+        "shows": 4,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 938,
+        "totalSeats": 144,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
       },
       {
-        "city": "Theni",
-        "state": "Tamil Nadu",
+        "city": "Birra",
+        "state": "Chhattisgarh",
         "venues": 1,
         "shows": 4,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 1040,
+        "totalSeats": 832,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Balod",
+        "state": "Chhattisgarh",
+        "venues": 1,
+        "shows": 4,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 1116,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -2385,56 +3092,34 @@
     ],
     "Chain_details": [
       {
-        "chain": "SDC Cinemas",
-        "venues": 1,
-        "shows": 4,
-        "gross": 11200.0,
-        "sold": 80,
-        "totalSeats": 1896,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 4.22
-      },
-      {
-        "chain": "Rajaiyyer Kannan",
+        "chain": "Shiva Bollywood Theatre: Baloda Bazar",
         "venues": 1,
         "shows": 4,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 688,
+        "totalSeats": 144,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
       },
       {
-        "chain": "Annamalai Cinemas A/C 4K: Madurai",
+        "chain": "AAB Cineplex",
         "venues": 1,
         "shows": 4,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 728,
+        "totalSeats": 832,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
       },
       {
-        "chain": "Anand Theatre: Acharapakkam",
-        "venues": 1,
-        "shows": 2,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 938,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "chain": "Lucky Cinemas Dolby Atmos: Periyakulam",
+        "chain": "Pachi Cineplex: Balod",
         "venues": 1,
         "shows": 4,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 1040,
+        "totalSeats": 1116,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -2609,26 +3294,26 @@
   },
   "Anaconda [2D | Tamil]": {
     "shows": 6,
-    "gross": 0.0,
-    "sold": 0,
+    "gross": 2500.0,
+    "sold": 25,
     "totalSeats": 2352,
     "venues": 2,
     "cities": 1,
     "fastfilling": 0,
     "housefull": 0,
-    "occupancy": 0.0,
+    "occupancy": 1.06,
     "details": [
       {
         "city": "Madurai",
         "state": "Tamil Nadu",
         "venues": 2,
         "shows": 6,
-        "gross": 0.0,
-        "sold": 0,
+        "gross": 2500.0,
+        "sold": 25,
         "totalSeats": 2352,
         "fastfilling": 0,
         "housefull": 0,
-        "occupancy": 0.0
+        "occupancy": 1.06
       }
     ],
     "Chain_details": [
@@ -2647,9 +3332,93 @@
         "chain": "Shanmuga Cine Complex: Madurai",
         "venues": 1,
         "shows": 4,
+        "gross": 2500.0,
+        "sold": 25,
+        "totalSeats": 1936,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 1.29
+      }
+    ]
+  },
+  "Avatar: Fire and Ash [2D | Hindi]": {
+    "shows": 4,
+    "gross": 0.0,
+    "sold": 0,
+    "totalSeats": 1295,
+    "venues": 3,
+    "cities": 3,
+    "fastfilling": 0,
+    "housefull": 0,
+    "occupancy": 0.0,
+    "details": [
+      {
+        "city": "Malegaon",
+        "state": "Maharashtra",
+        "venues": 1,
+        "shows": 2,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 1936,
+        "totalSeats": 924,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Shirur",
+        "state": "Maharashtra",
+        "venues": 1,
+        "shows": 1,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 144,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "city": "Veraval",
+        "state": "Gujarat",
+        "venues": 1,
+        "shows": 1,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 227,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      }
+    ],
+    "Chain_details": [
+      {
+        "chain": "Mohan Cinema: Malegaon",
+        "venues": 1,
+        "shows": 2,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 924,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Vision Entertainment",
+        "venues": 1,
+        "shows": 1,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 144,
+        "fastfilling": 0,
+        "housefull": 0,
+        "occupancy": 0.0
+      },
+      {
+        "chain": "Cinepolis P&A",
+        "venues": 1,
+        "shows": 1,
+        "gross": 0.0,
+        "sold": 0,
+        "totalSeats": 227,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -2695,10 +3464,10 @@
     ]
   },
   "Prit Janmo Janmi Bhulache Nahi [2D | Gujarati]": {
-    "shows": 3,
+    "shows": 4,
     "gross": 0.0,
     "sold": 0,
-    "totalSeats": 1500,
+    "totalSeats": 2000,
     "venues": 1,
     "cities": 1,
     "fastfilling": 0,
@@ -2709,10 +3478,10 @@
         "city": "Petlad",
         "state": "Gujarat",
         "venues": 1,
-        "shows": 3,
+        "shows": 4,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 1500,
+        "totalSeats": 2000,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -2722,71 +3491,10 @@
       {
         "chain": "Justickets",
         "venues": 1,
-        "shows": 3,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 1500,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      }
-    ]
-  },
-  "Dhanesh Ke Aradhna [2D | Chattisgarhi]": {
-    "shows": 8,
-    "gross": 0.0,
-    "sold": 0,
-    "totalSeats": 1948,
-    "venues": 2,
-    "cities": 2,
-    "fastfilling": 0,
-    "housefull": 0,
-    "occupancy": 0.0,
-    "details": [
-      {
-        "city": "Birra",
-        "state": "Chhattisgarh",
-        "venues": 1,
         "shows": 4,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 832,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "city": "Balod",
-        "state": "Chhattisgarh",
-        "venues": 1,
-        "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 1116,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      }
-    ],
-    "Chain_details": [
-      {
-        "chain": "AAB Cineplex",
-        "venues": 1,
-        "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 832,
-        "fastfilling": 0,
-        "housefull": 0,
-        "occupancy": 0.0
-      },
-      {
-        "chain": "Pachi Cineplex: Balod",
-        "venues": 1,
-        "shows": 4,
-        "gross": 0.0,
-        "sold": 0,
-        "totalSeats": 1116,
+        "totalSeats": 2000,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -2983,11 +3691,11 @@
       }
     ]
   },
-  "Asha (2025) [2D | Marathi]": {
-    "shows": 1,
+  "Akhanda 2: Thaandavam [2D | Hindi]": {
+    "shows": 3,
     "gross": 0.0,
     "sold": 0,
-    "totalSeats": 57,
+    "totalSeats": 450,
     "venues": 1,
     "cities": 1,
     "fastfilling": 0,
@@ -2995,13 +3703,13 @@
     "occupancy": 0.0,
     "details": [
       {
-        "city": "Wani",
-        "state": "Maharashtra",
+        "city": "Manawar",
+        "state": "Madhya Pradesh",
         "venues": 1,
-        "shows": 1,
+        "shows": 3,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 57,
+        "totalSeats": 450,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -3009,23 +3717,23 @@
     ],
     "Chain_details": [
       {
-        "chain": "Sujata Theatre: Wani",
+        "chain": "Shrikrishna Theatre",
         "venues": 1,
-        "shows": 1,
+        "shows": 3,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 57,
+        "totalSeats": 450,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
       }
     ]
   },
-  "Avatar: Fire and Ash [2D | Hindi]": {
+  "Laalo - Krishna Sada Sahaayate [2D | Gujarati]": {
     "shows": 1,
     "gross": 0.0,
     "sold": 0,
-    "totalSeats": 144,
+    "totalSeats": 227,
     "venues": 1,
     "cities": 1,
     "fastfilling": 0,
@@ -3033,13 +3741,13 @@
     "occupancy": 0.0,
     "details": [
       {
-        "city": "Shirur",
-        "state": "Maharashtra",
+        "city": "Veraval",
+        "state": "Gujarat",
         "venues": 1,
         "shows": 1,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 144,
+        "totalSeats": 227,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
@@ -3047,12 +3755,12 @@
     ],
     "Chain_details": [
       {
-        "chain": "Vision Entertainment",
+        "chain": "Cinepolis P&A",
         "venues": 1,
         "shows": 1,
         "gross": 0.0,
         "sold": 0,
-        "totalSeats": 144,
+        "totalSeats": 227,
         "fastfilling": 0,
         "housefull": 0,
         "occupancy": 0.0
